@@ -1250,6 +1250,7 @@ add_library(
   src/dialog/dlgkeywheel.ui
   src/dialog/dlgreplacecuecolor.cpp
   src/dialog/dlgreplacecuecolordlg.ui
+  src/dialog/dlgtutorialhome.cpp
   src/effects/backends/builtin/autopaneffect.cpp
   src/effects/backends/builtin/balanceeffect.cpp
   src/effects/backends/builtin/bessel4lvmixeqeffect.cpp
@@ -2917,6 +2918,7 @@ if(BUILD_TESTING)
     src/test/dbidtest.cpp
     src/test/directorydaotest.cpp
     src/test/duration_test.cpp
+    src/test/dlgtutorialhome_test.cpp
     src/test/durationutiltest.cpp
     #TODO: write useful tests for refactored effects system
     #src/test/effectchainslottest.cpp
