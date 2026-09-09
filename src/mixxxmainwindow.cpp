@@ -56,6 +56,7 @@
 #include "sources/soundsourceproxy.h"
 #include "track/track.h"
 #include "tutorial/tutorialvisibility.h"
+#include "tutorial/tutorialvisibilitypanel.h"
 #include "util/debug.h"
 #include "util/desktophelper.h"
 #include "util/menubarhelper.h"
@@ -143,8 +144,25 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             this,
             &MixxxMainWindow::showTutorialHome);
     m_pTutorialToolBar->addWidget(pBackToMenu);
+    auto pAdminControls =
+            make_parented<QPushButton>(tr("Admin: controls"), m_pTutorialToolBar);
+    pAdminControls->setObjectName(QStringLiteral("tutorialAdminControlsButton"));
+    pAdminControls->setAccessibleName(tr("Admin visibility controls"));
+    m_pTutorialToolBar->addSeparator();
+    m_pTutorialToolBar->addWidget(pAdminControls);
     addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
     m_pTutorialToolBar->hide();
+
+    m_pTutorialVisibilityPanel =
+            make_parented<mixxx::tutorial::VisibilityPanel>(this);
+    addDockWidget(Qt::RightDockWidgetArea, m_pTutorialVisibilityPanel);
+    m_pTutorialVisibilityPanel->setFloating(true);
+    m_pTutorialVisibilityPanel->resize(440, 700);
+    m_pTutorialVisibilityPanel->hide();
+    connect(pAdminControls.get(), &QPushButton::clicked, this, [this] {
+        m_pTutorialVisibilityPanel->setVisible(
+                !m_pTutorialVisibilityPanel->isVisible());
+    });
 
     initializeWindow();
 
@@ -513,6 +531,7 @@ MixxxMainWindow::~MixxxMainWindow() {
             QString(saveState().toBase64()));
 
     if (m_pTutorialVisibility) {
+        m_pTutorialVisibilityPanel->setController(nullptr);
         m_pTutorialVisibility->restore();
         m_pTutorialVisibility.reset();
     }
@@ -599,10 +618,12 @@ void MixxxMainWindow::showTutorialHome() {
     }
 
     if (m_pTutorialVisibility) {
+        m_pTutorialVisibilityPanel->setController(nullptr);
         m_pTutorialVisibility->restore();
         m_pTutorialVisibility.reset();
     }
     m_activeTutorialId.clear();
+    m_pTutorialVisibilityPanel->hide();
     m_pTutorialToolBar->hide();
 
     QWidget* pDjWorkspace = takeCentralWidget();
@@ -646,6 +667,8 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     if (!m_pTutorialVisibility->applyProfile(profilePath, tutorialId, &error)) {
         qWarning() << error;
     }
+    m_pTutorialVisibilityPanel->setController(m_pTutorialVisibility.get());
+    m_pTutorialVisibilityPanel->show();
     m_pTutorialToolBar->show();
 
     if (pTutorialHome) {
@@ -1435,6 +1458,7 @@ void MixxxMainWindow::rebootMixxxView() {
     m_inRebootMixxxView = true;
 
     if (m_pTutorialVisibility) {
+        m_pTutorialVisibilityPanel->setController(nullptr);
         m_pTutorialVisibility->restore();
         m_pTutorialVisibility.reset();
     }
@@ -1494,6 +1518,7 @@ void MixxxMainWindow::rebootMixxxView() {
                     profilePath, m_activeTutorialId, &error)) {
             qWarning() << error;
         }
+        m_pTutorialVisibilityPanel->setController(m_pTutorialVisibility.get());
     }
 #ifdef __LINUX__
     // don't adjustSize() on Linux as this wouldn't use the entire available area

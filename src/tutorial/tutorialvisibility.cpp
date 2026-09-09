@@ -34,26 +34,114 @@ bool VisibilityController::applyProfile(const QString& filePath,
     for (const WidgetSelector& selector : selectors) {
         hideMatchingWidgets(selector);
     }
+    refreshHiddenStates();
     return true;
 }
 
 void VisibilityController::restore() {
+    restoreAppliedStates();
+    m_hiddenWidgets.clear();
+}
+
+void VisibilityController::restoreAppliedStates() {
     for (const WidgetState& state : std::as_const(m_widgetStates)) {
         if (state.pWidget) {
-            if (state.pOpacityEffect) {
-                if (state.ownsOpacityEffect &&
-                        state.pWidget->graphicsEffect() == state.pOpacityEffect) {
-                    state.pWidget->setGraphicsEffect(nullptr);
-                } else {
-                    state.pOpacityEffect->setOpacity(state.previousOpacity);
-                }
-            }
-            state.pWidget->setEnabled(state.wasEnabled);
-            state.pWidget->setAttribute(
-                    Qt::WA_TransparentForMouseEvents, !state.acceptedMouseEvents);
+            state.pWidget->setSizePolicy(state.previousSizePolicy);
+            state.pWidget->setHidden(state.wasHidden);
         }
     }
     m_widgetStates.clear();
+}
+
+QList<QWidget*> VisibilityController::controllableWidgets() const {
+    QList<QWidget*> widgets;
+    if (!m_pSkinRoot) {
+        return widgets;
+    }
+    widgets.append(m_pSkinRoot);
+    const QList<QWidget*> children = m_pSkinRoot->findChildren<QWidget*>();
+    for (QWidget* pWidget : children) {
+        if (isControllableWidget(pWidget)) {
+            widgets.append(pWidget);
+        }
+    }
+    return widgets;
+}
+
+bool VisibilityController::isControllableWidget(QWidget* pWidget) const {
+    if (!pWidget) {
+        return false;
+    }
+    return pWidget == m_pSkinRoot ||
+            pWidget->property("mixxxSkinWidgetType").isValid() ||
+            pWidget->property("mixxxTooltipId").isValid() ||
+            pWidget->property("mixxxControlKeys").isValid();
+}
+
+bool VisibilityController::isWidgetExplicitlyVisible(QWidget* pWidget) const {
+    return pWidget && !m_hiddenWidgets.contains(pWidget);
+}
+
+void VisibilityController::setWidgetVisible(QWidget* pWidget, bool visible) {
+    if (!isControllableWidget(pWidget)) {
+        return;
+    }
+    if (visible) {
+        // A child cannot be painted through a hidden parent. Turn its
+        // ancestor chain on while leaving every sibling's state untouched.
+        for (QWidget* pCurrent = pWidget; pCurrent;
+                pCurrent = pCurrent->parentWidget()) {
+            m_hiddenWidgets.remove(pCurrent);
+            if (pCurrent == m_pSkinRoot) {
+                break;
+            }
+        }
+    } else {
+        m_hiddenWidgets.insert(pWidget);
+    }
+    refreshHiddenStates();
+}
+
+void VisibilityController::setWidgetTreeVisible(QWidget* pWidget, bool visible) {
+    if (!isControllableWidget(pWidget)) {
+        return;
+    }
+    if (visible) {
+        for (QWidget* pCurrent = pWidget; pCurrent;
+                pCurrent = pCurrent->parentWidget()) {
+            m_hiddenWidgets.remove(pCurrent);
+            if (pCurrent == m_pSkinRoot) {
+                break;
+            }
+        }
+    }
+    const QList<QWidget*> descendants = pWidget->findChildren<QWidget*>();
+    const auto updateWidget = [this, visible](QWidget* pCurrent) {
+        if (!isControllableWidget(pCurrent)) {
+            return;
+        }
+        if (visible) {
+            m_hiddenWidgets.remove(pCurrent);
+        } else {
+            m_hiddenWidgets.insert(pCurrent);
+        }
+    };
+    updateWidget(pWidget);
+    for (QWidget* pDescendant : descendants) {
+        updateWidget(pDescendant);
+    }
+    refreshHiddenStates();
+}
+
+void VisibilityController::setAllWidgetsVisible(bool visible) {
+    m_hiddenWidgets.clear();
+    if (!visible) {
+        const QList<QWidget*> widgets = controllableWidgets();
+        for (QWidget* pWidget : widgets) {
+            m_hiddenWidgets.insert(pWidget);
+        }
+    }
+    refreshHiddenStates();
 }
 
 QList<WidgetSelector> VisibilityController::loadProfile(const QString& filePath,
@@ -177,36 +265,39 @@ void VisibilityController::hideMatchingWidgets(const WidgetSelector& selector) {
     }
 
     for (QWidget* pWidget : std::as_const(matches)) {
-        bool alreadyTracked = false;
-        for (const WidgetState& state : std::as_const(m_widgetStates)) {
-            if (state.pWidget == pWidget) {
-                alreadyTracked = true;
+        m_hiddenWidgets.insert(pWidget);
+    }
+}
+
+void VisibilityController::applyHiddenState(QWidget* pWidget) {
+    const QSizePolicy previousSizePolicy = pWidget->sizePolicy();
+    m_widgetStates.append(
+            {QPointer<QWidget>(pWidget), previousSizePolicy, pWidget->isHidden()});
+    QSizePolicy retainedSizePolicy = previousSizePolicy;
+    retainedSizePolicy.setRetainSizeWhenHidden(true);
+    pWidget->setSizePolicy(retainedSizePolicy);
+    pWidget->hide();
+}
+
+void VisibilityController::refreshHiddenStates() {
+    restoreAppliedStates();
+    for (QWidget* pWidget : std::as_const(m_hiddenWidgets)) {
+        if (!pWidget) {
+            continue;
+        }
+        bool hasHiddenAncestor = false;
+        for (QWidget* pParent = pWidget->parentWidget(); pParent;
+                pParent = pParent->parentWidget()) {
+            if (m_hiddenWidgets.contains(pParent)) {
+                hasHiddenAncestor = true;
+                break;
+            }
+            if (pParent == m_pSkinRoot) {
                 break;
             }
         }
-        if (!alreadyTracked) {
-            auto* pOpacityEffect =
-                    qobject_cast<QGraphicsOpacityEffect*>(pWidget->graphicsEffect());
-            bool ownsOpacityEffect = false;
-            if (!pOpacityEffect && pWidget->graphicsEffect()) {
-                qWarning() << "Cannot visually hide widget with an existing graphics effect:"
-                           << pWidget->objectName();
-                continue;
-            }
-            if (!pOpacityEffect) {
-                pOpacityEffect = new QGraphicsOpacityEffect(pWidget);
-                pWidget->setGraphicsEffect(pOpacityEffect);
-                ownsOpacityEffect = true;
-            }
-            m_widgetStates.append({QPointer<QWidget>(pWidget),
-                    QPointer<QGraphicsOpacityEffect>(pOpacityEffect),
-                    pOpacityEffect->opacity(),
-                    ownsOpacityEffect,
-                    pWidget->isEnabled(),
-                    !pWidget->testAttribute(Qt::WA_TransparentForMouseEvents)});
-            pOpacityEffect->setOpacity(0.0);
-            pWidget->setEnabled(false);
-            pWidget->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        if (!hasHiddenAncestor) {
+            applyHiddenState(pWidget);
         }
     }
 }

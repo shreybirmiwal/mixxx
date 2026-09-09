@@ -28,6 +28,7 @@ class CoreServices;
 
 namespace tutorial {
 class VisibilityController;
+class VisibilityPanel;
 }
 
 namespace skin {
@@ -139,6 +140,7 @@ class MixxxMainWindow : public QMainWindow {
     QWidget* m_pCentralWidget;
     QPointer<TutorialHomePage> m_pTutorialHomePage;
     parented_ptr<QToolBar> m_pTutorialToolBar;
+    parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;
     std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
     QString m_activeTutorialId;
     LaunchImage* m_pLaunchImage;

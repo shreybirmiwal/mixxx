@@ -1629,6 +1629,7 @@ add_library(
   src/track/trackrecord.cpp
   src/track/trackref.cpp
   src/tutorial/tutorialvisibility.cpp
+  src/tutorial/tutorialvisibilitypanel.cpp
   src/util/autofilereloader.cpp
   src/util/battery/battery.cpp
   src/util/cache.cpp

@@ -2,8 +2,13 @@
 
 Edit `visibility_profiles.json` to decide which parts of the loaded Mixxx skin
 are on or off for each tutorial. The profile key must match the tutorial ID in
-`src/dialog/dlgtutorialhome.cpp`. Off controls become transparent and
-non-interactive, but keep their exact space in the default Mixxx layout.
+`src/dialog/dlgtutorialhome.cpp`. Off controls are fully hidden, including
+native/OpenGL content, but retain their exact space in the default Mixxx layout.
+
+For debugging, open any lesson and use the **Admin: controls** panel. It lists
+every parsed skin item with a live checkbox, supports metadata search, and has
+**All on** / **All off** controls. This panel is temporary builder UI and does
+not appear on the tutorial home page.
 
 Use `widgetStates` for explicit lesson configuration:
 

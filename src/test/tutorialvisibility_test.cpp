@@ -86,32 +86,20 @@ TEST(TutorialVisibilityTest, HidesMatchesWithinScopeAndRestoresState) {
     QString error;
     ASSERT_TRUE(controller.applyProfile(path, QStringLiteral("focused"), &error));
     EXPECT_TRUE(error.isEmpty());
-    EXPECT_EQ(clock.isHidden(), clockWasHidden);
-    EXPECT_EQ(play1.isHidden(), play1WasHidden);
+    EXPECT_TRUE(clock.isHidden());
+    EXPECT_TRUE(play1.isHidden());
     EXPECT_EQ(play2.isHidden(), play2WasHidden);
-    ASSERT_NE(clock.graphicsEffect(), nullptr);
-    ASSERT_NE(play1.graphicsEffect(), nullptr);
-    auto* pClockEffect =
-            qobject_cast<QGraphicsOpacityEffect*>(clock.graphicsEffect());
-    auto* pPlayEffect =
-            qobject_cast<QGraphicsOpacityEffect*>(play1.graphicsEffect());
-    ASSERT_NE(pClockEffect, nullptr);
-    ASSERT_NE(pPlayEffect, nullptr);
-    EXPECT_DOUBLE_EQ(pClockEffect->opacity(), 0.0);
-    EXPECT_DOUBLE_EQ(pPlayEffect->opacity(), 0.0);
-    EXPECT_FALSE(clock.isEnabled());
-    EXPECT_FALSE(play1.isEnabled());
-    EXPECT_NE(rating.graphicsEffect(), nullptr);
-    EXPECT_NE(rate.graphicsEffect(), nullptr);
+    EXPECT_TRUE(clock.sizePolicy().retainSizeWhenHidden());
+    EXPECT_TRUE(play1.sizePolicy().retainSizeWhenHidden());
+    EXPECT_TRUE(rating.isHidden());
+    EXPECT_TRUE(rate.isHidden());
 
     controller.restore();
     EXPECT_EQ(clock.isHidden(), clockWasHidden);
     EXPECT_EQ(play1.isHidden(), play1WasHidden);
     EXPECT_EQ(play2.isHidden(), play2WasHidden);
-    EXPECT_EQ(clock.graphicsEffect(), nullptr);
-    EXPECT_EQ(play1.graphicsEffect(), nullptr);
-    EXPECT_TRUE(clock.isEnabled());
-    EXPECT_TRUE(play1.isEnabled());
+    EXPECT_FALSE(clock.sizePolicy().retainSizeWhenHidden());
+    EXPECT_FALSE(play1.sizePolicy().retainSizeWhenHidden());
 }
 
 TEST(TutorialVisibilityTest, ReportsMissingProfile) {
@@ -125,4 +113,42 @@ TEST(TutorialVisibilityTest, ReportsMissingProfile) {
             path, QStringLiteral("missing"), &error);
     EXPECT_TRUE(selectors.isEmpty());
     EXPECT_FALSE(error.isEmpty());
+}
+
+TEST(TutorialVisibilityTest, AdminCanBlankWorkspaceAndRestoreOneBranch) {
+    QWidget skin;
+    QWidget deck1(&skin);
+    QWidget deck2(&skin);
+    QWidget play1(&deck1);
+    QWidget play2(&deck2);
+    deck1.setProperty("mixxxSkinWidgetType", QStringLiteral("WidgetGroup"));
+    deck2.setProperty("mixxxSkinWidgetType", QStringLiteral("WidgetGroup"));
+    play1.setProperty("mixxxSkinWidgetType", QStringLiteral("PushButton"));
+    play2.setProperty("mixxxSkinWidgetType", QStringLiteral("PushButton"));
+
+    mixxx::tutorial::VisibilityController controller(&skin);
+    EXPECT_EQ(controller.controllableWidgets().size(), 5);
+
+    controller.setAllWidgetsVisible(false);
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&skin));
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&play1));
+    EXPECT_TRUE(skin.isHidden());
+    EXPECT_TRUE(skin.sizePolicy().retainSizeWhenHidden());
+
+    controller.setWidgetVisible(&play1, true);
+    EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&skin));
+    EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&deck1));
+    EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&play1));
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&deck2));
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&play2));
+    EXPECT_TRUE(deck2.isHidden());
+    EXPECT_TRUE(deck2.sizePolicy().retainSizeWhenHidden());
+
+    controller.setWidgetTreeVisible(&deck1, false);
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&deck1));
+    EXPECT_FALSE(controller.isWidgetExplicitlyVisible(&play1));
+
+    controller.setWidgetTreeVisible(&deck1, true);
+    EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&deck1));
+    EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&play1));
 }

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <QList>
-#include <QGraphicsOpacityEffect>
 #include <QPointer>
+#include <QSet>
+#include <QSizePolicy>
 #include <QString>
 
 class QWidget;
@@ -34,6 +35,16 @@ class VisibilityController final {
             QString* pError = nullptr);
     void restore();
 
+    /// Builder/admin controls for changing a loaded skin without affecting its
+    /// geometry. Enabling a nested widget also enables its ancestors so the
+    /// requested item can actually be seen.
+    QList<QWidget*> controllableWidgets() const;
+    bool isControllableWidget(QWidget* pWidget) const;
+    bool isWidgetExplicitlyVisible(QWidget* pWidget) const;
+    void setWidgetVisible(QWidget* pWidget, bool visible);
+    void setWidgetTreeVisible(QWidget* pWidget, bool visible);
+    void setAllWidgetsVisible(bool visible);
+
     static QList<WidgetSelector> loadProfile(const QString& filePath,
             const QString& profileId,
             QString* pError = nullptr);
@@ -41,17 +52,18 @@ class VisibilityController final {
   private:
     struct WidgetState {
         QPointer<QWidget> pWidget;
-        QPointer<QGraphicsOpacityEffect> pOpacityEffect;
-        qreal previousOpacity;
-        bool ownsOpacityEffect;
-        bool wasEnabled;
-        bool acceptedMouseEvents;
+        QSizePolicy previousSizePolicy;
+        bool wasHidden;
     };
 
     bool matchesSelector(QWidget* pWidget, const WidgetSelector& selector) const;
     void hideMatchingWidgets(const WidgetSelector& selector);
+    void applyHiddenState(QWidget* pWidget);
+    void restoreAppliedStates();
+    void refreshHiddenStates();
 
     QWidget* m_pSkinRoot;
+    QSet<QWidget*> m_hiddenWidgets;
     QList<WidgetState> m_widgetStates;
 };
 
