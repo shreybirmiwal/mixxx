@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QList>
+#include <QGraphicsOpacityEffect>
 #include <QPointer>
 #include <QString>
 
@@ -11,6 +12,14 @@ namespace mixxx::tutorial {
 struct WidgetSelector {
     QString objectName;
     QString within;
+    QString tooltipId;
+    QString controlKey;
+    QString widgetType;
+
+    bool isValid() const {
+        return !objectName.isEmpty() || !tooltipId.isEmpty() ||
+                !controlKey.isEmpty() || !widgetType.isEmpty();
+    }
 };
 
 /// Applies builder-defined visibility profiles to an already loaded Mixxx skin.
@@ -32,9 +41,14 @@ class VisibilityController final {
   private:
     struct WidgetState {
         QPointer<QWidget> pWidget;
-        bool wasHidden;
+        QPointer<QGraphicsOpacityEffect> pOpacityEffect;
+        qreal previousOpacity;
+        bool ownsOpacityEffect;
+        bool wasEnabled;
+        bool acceptedMouseEvents;
     };
 
+    bool matchesSelector(QWidget* pWidget, const WidgetSelector& selector) const;
     void hideMatchingWidgets(const WidgetSelector& selector);
 
     QWidget* m_pSkinRoot;

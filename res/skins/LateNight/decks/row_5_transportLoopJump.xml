@@ -108,6 +108,7 @@
           <WidgetGroup><SizePolicy>i,min</SizePolicy><MaximumSize>8,</MaximumSize></WidgetGroup>
 
           <WidgetGroup><!-- HotCues -->
+            <ObjectName>HotcueControls</ObjectName>
             <Layout>vertical</Layout>
             <SizePolicy>max,min</SizePolicy>
             <Children>

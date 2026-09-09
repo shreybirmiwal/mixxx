@@ -1,11 +1,22 @@
 {
   "profiles": {
     "crossfader": {
-      "hiddenWidgets": [
-        "ClockWidget",
-        "DecksRight",
-        "EffectsRack",
-        { "within": "Deck1_Src", "objectName": "Reverse" }
+      "widgetStates": [
+        { "objectName": "ClockWidget", "visible": false },
+        { "objectName": "LatencyBatteryContainer", "visible": false },
+        { "objectName": "ToolBarSection", "visible": false },
+        { "objectName": "RecBox", "visible": false },
+        { "objectName": "BroadcastButton", "visible": false },
+        { "objectName": "DecksRight", "visible": false },
+        { "objectName": "EffectsRack", "visible": false },
+        { "objectName": "SamplersRack", "visible": false },
+        { "objectName": "MicRack", "visible": false },
+        { "objectName": "AuxRack", "visible": false },
+        { "within": "Deck1_Src", "objectName": "Stars", "visible": false },
+        { "within": "Deck1_Src", "objectName": "KeyControls1", "visible": false },
+        { "within": "Deck1_Src", "objectName": "RateContainer", "visible": false },
+        { "within": "Deck1_Src", "objectName": "HotcueControls", "visible": false },
+        { "within": "Deck1_Src", "objectName": "Reverse", "visible": false }
       ]
     },
     "bass-eq": { "hiddenWidgets": [] },

@@ -2418,6 +2418,28 @@ void LegacySkinParser::setupBaseWidget(const QDomNode& node,
 void LegacySkinParser::setupWidget(const QDomNode& node,
                                    QWidget* pWidget,
                                    bool setPosition) {
+    // Expose resolved skin metadata for builder-defined tutorial focus profiles.
+    // Unlike object names, these properties are available on every parsed skin
+    // widget and include values expanded from template variables.
+    pWidget->setProperty("mixxxSkinWidgetType", node.nodeName());
+    const QString tooltipId = m_pContext->selectString(node, "TooltipId");
+    if (!tooltipId.isEmpty()) {
+        pWidget->setProperty("mixxxTooltipId", tooltipId);
+    }
+    QStringList controlKeys;
+    for (QDomNode child = node.firstChild(); !child.isNull(); child = child.nextSibling()) {
+        if (child.nodeName() != QStringLiteral("Connection")) {
+            continue;
+        }
+        const QString controlKey = m_pContext->selectString(child, "ConfigKey");
+        if (!controlKey.isEmpty()) {
+            controlKeys.append(controlKey);
+        }
+    }
+    if (!controlKeys.isEmpty()) {
+        pWidget->setProperty("mixxxControlKeys", controlKeys);
+    }
+
     // Override the widget object name.
     QString objectName = m_pContext->selectString(node, "ObjectName");
     if (!objectName.isEmpty()) {
