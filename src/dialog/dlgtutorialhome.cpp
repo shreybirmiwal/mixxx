@@ -4,7 +4,6 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QToolButton>
@@ -20,15 +19,15 @@ constexpr int kHomeMinimumWidth = 760;
 constexpr int kHomeMinimumHeight = 560;
 } // namespace
 
-DlgTutorialHome::DlgTutorialHome(QWidget* parent)
-        : QDialog(parent) {
-    setWindowTitle(tr("Mixxx Home"));
-    setModal(true);
-    resize(kHomeWidth, kHomeHeight);
+TutorialHomePage::TutorialHomePage(QWidget* parent)
+        : QWidget(parent),
+          m_pUpdateStatus(nullptr) {
+    setObjectName(QStringLiteral("tutorialHomePage"));
     setMinimumSize(kHomeMinimumWidth, kHomeMinimumHeight);
+    resize(kHomeWidth, kHomeHeight);
 
     setStyleSheet(QStringLiteral(R"(
-        QDialog {
+        QWidget#tutorialHomePage {
             background: #0b0d12;
             color: #f7f8fb;
         }
@@ -59,6 +58,11 @@ DlgTutorialHome::DlgTutorialHome(QWidget* parent)
         QPushButton#updatesButton:hover {
             background: #232938;
             border-color: #7c5cff;
+        }
+        QLabel#updateStatus {
+            color: #b9c1d1;
+            font-size: 13px;
+            padding: 8px 0;
         }
         QFrame#freePlayCard {
             background: #6847ed;
@@ -147,9 +151,16 @@ DlgTutorialHome::DlgTutorialHome(QWidget* parent)
     connect(pUpdatesButton,
             &QPushButton::clicked,
             this,
-            &DlgTutorialHome::showUpdateStatus);
+            &TutorialHomePage::showUpdateStatus);
     pTopBar->addWidget(pUpdatesButton);
     pRootLayout->addWidget(pTopBarWidget);
+
+    auto pUpdateStatus = make_parented<QLabel>(this);
+    m_pUpdateStatus = pUpdateStatus.get();
+    m_pUpdateStatus->setObjectName(QStringLiteral("updateStatus"));
+    m_pUpdateStatus->setWordWrap(true);
+    m_pUpdateStatus->hide();
+    pRootLayout->addWidget(pUpdateStatus);
 
     auto pTitle = make_parented<QLabel>(tr("Choose how you want to play"), this);
     pTitle->setObjectName(QStringLiteral("title"));
@@ -184,7 +195,10 @@ DlgTutorialHome::DlgTutorialHome(QWidget* parent)
     pFreePlayButton->setObjectName(QStringLiteral("freePlayButton"));
     pFreePlayButton->setAccessibleName(tr("Free Play"));
     pFreePlayButton->setCursor(Qt::PointingHandCursor);
-    connect(pFreePlayButton, &QPushButton::clicked, this, &QDialog::accept);
+    connect(pFreePlayButton,
+            &QPushButton::clicked,
+            this,
+            &TutorialHomePage::openDjWorkspaceRequested);
     pFreePlayLayout->addWidget(pFreePlayButton);
     pRootLayout->addWidget(pFreePlayCard);
 
@@ -224,7 +238,7 @@ DlgTutorialHome::DlgTutorialHome(QWidget* parent)
     pRootLayout->addWidget(pScrollArea, 1);
 }
 
-void DlgTutorialHome::addTutorialSection(QVBoxLayout* pLayout,
+void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
         const QString& title,
         const QString& description,
         const QStringList& tutorials) {
@@ -259,7 +273,10 @@ void DlgTutorialHome::addTutorialSection(QVBoxLayout* pLayout,
         pTutorialButton->setProperty("tutorialCard", true);
         pTutorialButton->setAccessibleName(tutorial);
         pTutorialButton->setCursor(Qt::PointingHandCursor);
-        connect(pTutorialButton, &QPushButton::clicked, this, &QDialog::accept);
+        connect(pTutorialButton,
+                &QPushButton::clicked,
+                this,
+                &TutorialHomePage::openDjWorkspaceRequested);
         pBodyLayout->addWidget(pTutorialButton);
     }
     pSectionLayout->addWidget(pBody);
@@ -268,19 +285,19 @@ void DlgTutorialHome::addTutorialSection(QVBoxLayout* pLayout,
     connect(pHeader,
             &QToolButton::toggled,
             this,
-            &DlgTutorialHome::updateSectionArrow);
+            &TutorialHomePage::updateSectionArrow);
     pLayout->addWidget(pSection);
 }
 
-void DlgTutorialHome::showUpdateStatus() {
-    QMessageBox::information(this,
-            tr("Updates"),
-            tr("You are running the local Mixxx %1 build.\n\n"
-               "Pull the fork's upstream remote and rebuild to install source updates.")
+void TutorialHomePage::showUpdateStatus() {
+    m_pUpdateStatus->setText(
+            tr("You are running the local Mixxx %1 build. Pull the fork's upstream "
+               "remote and rebuild to install source updates.")
                     .arg(QCoreApplication::applicationVersion()));
+    m_pUpdateStatus->show();
 }
 
-void DlgTutorialHome::updateSectionArrow(bool expanded) {
+void TutorialHomePage::updateSectionArrow(bool expanded) {
     auto* pHeader = qobject_cast<QToolButton*>(sender());
     if (pHeader) {
         pHeader->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);

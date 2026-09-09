@@ -15,7 +15,6 @@
 #include "config.h"
 #include "controllers/controllermanager.h"
 #include "coreservices.h"
-#include "dialog/dlgtutorialhome.h"
 #include "errordialoghandler.h"
 #include "mixxxapplication.h"
 #ifdef MIXXX_USE_QML
@@ -61,13 +60,6 @@ constexpr int kPixmapCacheLimitAt100PercentZoom = 32 * 1024; // 32 MByte
 
 int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
     CmdlineArgs::Instance().parseForUserFeedback();
-
-    qDebug() << "Displaying tutorial home";
-    DlgTutorialHome tutorialHome;
-    if (tutorialHome.exec() != QDialog::Accepted) {
-        qDebug() << "Tutorial home closed";
-        return 0;
-    }
 
     int exitCode;
     auto pCoreServices = std::make_shared<mixxx::CoreServices>(args, pApp);
@@ -141,7 +133,8 @@ int runMixxx(MixxxApplication* pApp, const CmdlineArgs& args) {
         if (ErrorDialogHandler::instance()->checkError()) {
             exitCode = kFatalErrorOnStartupExitCode;
         } else {
-            qDebug() << "Displaying main window";
+            qDebug() << "Displaying embedded tutorial home";
+            mainWindow.showTutorialHome();
             mainWindow.show();
 
             qDebug() << "Running Mixxx";

@@ -1,16 +1,20 @@
 #pragma once
 
-#include <QDialog>
 #include <QString>
 #include <QStringList>
+#include <QWidget>
 
+class QLabel;
 class QVBoxLayout;
 
-class DlgTutorialHome final : public QDialog {
+class TutorialHomePage final : public QWidget {
     Q_OBJECT
 
   public:
-    explicit DlgTutorialHome(QWidget* parent = nullptr);
+    explicit TutorialHomePage(QWidget* parent = nullptr);
+
+  signals:
+    void openDjWorkspaceRequested();
 
   private slots:
     void showUpdateStatus();
@@ -21,4 +25,6 @@ class DlgTutorialHome final : public QDialog {
             const QString& title,
             const QString& description,
             const QStringList& tutorials);
+
+    QLabel* m_pUpdateStatus;
 };

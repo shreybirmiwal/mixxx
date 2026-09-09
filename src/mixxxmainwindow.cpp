@@ -29,6 +29,7 @@
 #include "dialog/dlgabout.h"
 #include "dialog/dlgdevelopertools.h"
 #include "dialog/dlgkeywheel.h"
+#include "dialog/dlgtutorialhome.h"
 #include "moc_mixxxmainwindow.cpp"
 #include "preferences/dialog/dlgpreferences.h"
 #ifdef __BROADCAST__
@@ -485,6 +486,15 @@ MixxxMainWindow::~MixxxMainWindow() {
     m_pCoreServices->getSettings()->set(ConfigKey("[MainWindow]", "state"),
             QString(saveState().toBase64()));
 
+    // The DJ skin is detached while the embedded tutorial home is visible.
+    // Restore it as the central widget so the standard skin teardown below
+    // continues to own and dispose it correctly.
+    if (m_pCentralWidget && centralWidget() != m_pCentralWidget) {
+        QWidget* pTutorialHome = takeCentralWidget();
+        setCentralWidget(m_pCentralWidget);
+        delete pTutorialHome;
+    }
+
     // GUI depends on KeyboardEventFilter, PlayerManager, Library
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting skin";
     // Clear widget pointer list and destroy all update connections before we
@@ -550,6 +560,47 @@ MixxxMainWindow::~MixxxMainWindow() {
 
     delete m_pGuiTick;
     delete m_pVisualsManager;
+}
+
+void MixxxMainWindow::showTutorialHome() {
+    if (!m_pCentralWidget || m_pTutorialHomePage) {
+        return;
+    }
+
+    QWidget* pDjWorkspace = takeCentralWidget();
+    VERIFY_OR_DEBUG_ASSERT(pDjWorkspace == m_pCentralWidget) {
+        if (pDjWorkspace) {
+            setCentralWidget(pDjWorkspace);
+        }
+        return;
+    }
+    pDjWorkspace->hide();
+    pDjWorkspace->setParent(this);
+
+    auto pTutorialHome = make_parented<TutorialHomePage>(this);
+    m_pTutorialHomePage = pTutorialHome.get();
+    connect(pTutorialHome.get(),
+            &TutorialHomePage::openDjWorkspaceRequested,
+            this,
+            &MixxxMainWindow::showDjWorkspace);
+    setCentralWidget(pTutorialHome);
+    m_pTutorialHomePage->show();
+}
+
+void MixxxMainWindow::showDjWorkspace() {
+    if (!m_pCentralWidget || !m_pTutorialHomePage) {
+        return;
+    }
+
+    QWidget* pTutorialHome = takeCentralWidget();
+    m_pCentralWidget->setParent(this);
+    setCentralWidget(m_pCentralWidget);
+    m_pCentralWidget->show();
+
+    if (pTutorialHome) {
+        pTutorialHome->setParent(this);
+        pTutorialHome->deleteLater();
+    }
 }
 
 void MixxxMainWindow::initializeWindow() {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QPointer>
 #include <QString>
 #include <memory>
 
@@ -15,6 +16,7 @@ class DlgPreferences;
 class DlgKeywheel;
 class GuiTick;
 class LaunchImage;
+class TutorialHomePage;
 class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
@@ -48,6 +50,8 @@ class MixxxMainWindow : public QMainWindow {
 #endif
     /// Initialize main window after creation. Should only be called once.
     void initialize();
+    /// Replace the DJ skin with the tutorial home page in this window.
+    void showTutorialHome();
     /// creates the menu_bar and inserts the file Menu
     void createMenuBar();
     void connectMenuBar();
@@ -91,6 +95,7 @@ class MixxxMainWindow : public QMainWindow {
 
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
+    void showDjWorkspace();
 
   signals:
     void skinLoaded();
@@ -127,6 +132,7 @@ class MixxxMainWindow : public QMainWindow {
     std::shared_ptr<mixxx::CoreServices> m_pCoreServices;
 
     QWidget* m_pCentralWidget;
+    QPointer<TutorialHomePage> m_pTutorialHomePage;
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__
     Qt::WindowStates m_prevState;

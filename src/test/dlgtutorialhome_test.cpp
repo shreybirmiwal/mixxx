@@ -3,8 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <QFrame>
+#include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSignalSpy>
 #include <QToolButton>
 
 namespace {
@@ -22,8 +24,8 @@ QList<T*> childrenWithProperty(QWidget* pParent, const char* property) {
 
 } // namespace
 
-TEST(DlgTutorialHomeTest, ContainsScrollableTutorialSectionsAndActions) {
-    DlgTutorialHome home;
+TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
+    TutorialHomePage home;
 
     EXPECT_NE(home.findChild<QScrollArea*>(QStringLiteral("tutorialScrollArea")), nullptr);
     EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("updatesButton")), nullptr);
@@ -32,8 +34,8 @@ TEST(DlgTutorialHomeTest, ContainsScrollableTutorialSectionsAndActions) {
     EXPECT_EQ(childrenWithProperty<QPushButton>(&home, "tutorialCard").size(), 10);
 }
 
-TEST(DlgTutorialHomeTest, SectionHeadersToggleTheirContent) {
-    DlgTutorialHome home;
+TEST(TutorialHomePageTest, SectionHeadersToggleTheirContent) {
+    TutorialHomePage home;
     const auto headers = childrenWithProperty<QToolButton>(&home, "sectionHeader");
     const auto bodies = childrenWithProperty<QFrame>(&home, "sectionBody");
     ASSERT_FALSE(headers.isEmpty());
@@ -46,18 +48,35 @@ TEST(DlgTutorialHomeTest, SectionHeadersToggleTheirContent) {
     EXPECT_FALSE(bodies.first()->isHidden());
 }
 
-TEST(DlgTutorialHomeTest, FreePlayAndTutorialsOpenTheDjWorkspace) {
-    DlgTutorialHome freePlayHome;
+TEST(TutorialHomePageTest, FreePlayAndTutorialsRequestTheDjWorkspace) {
+    TutorialHomePage freePlayHome;
+    QSignalSpy freePlaySpy(
+            &freePlayHome, &TutorialHomePage::openDjWorkspaceRequested);
     auto* pFreePlay =
             freePlayHome.findChild<QPushButton*>(QStringLiteral("freePlayButton"));
     ASSERT_NE(pFreePlay, nullptr);
     pFreePlay->click();
-    EXPECT_EQ(freePlayHome.result(), QDialog::Accepted);
+    EXPECT_EQ(freePlaySpy.count(), 1);
 
-    DlgTutorialHome tutorialHome;
+    TutorialHomePage tutorialHome;
+    QSignalSpy tutorialSpy(
+            &tutorialHome, &TutorialHomePage::openDjWorkspaceRequested);
     const auto tutorials =
             childrenWithProperty<QPushButton>(&tutorialHome, "tutorialCard");
     ASSERT_FALSE(tutorials.isEmpty());
     tutorials.first()->click();
-    EXPECT_EQ(tutorialHome.result(), QDialog::Accepted);
+    EXPECT_EQ(tutorialSpy.count(), 1);
+}
+
+TEST(TutorialHomePageTest, UpdatesAreReportedInsideThePage) {
+    TutorialHomePage home;
+    auto* pUpdates = home.findChild<QPushButton*>(QStringLiteral("updatesButton"));
+    auto* pStatus = home.findChild<QLabel*>(QStringLiteral("updateStatus"));
+    ASSERT_NE(pUpdates, nullptr);
+    ASSERT_NE(pStatus, nullptr);
+
+    EXPECT_TRUE(pStatus->isHidden());
+    pUpdates->click();
+    EXPECT_FALSE(pStatus->isHidden());
+    EXPECT_FALSE(pStatus->text().isEmpty());
 }
