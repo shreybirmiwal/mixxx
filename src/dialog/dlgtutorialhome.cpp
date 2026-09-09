@@ -198,7 +198,9 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     connect(pFreePlayButton,
             &QPushButton::clicked,
             this,
-            &TutorialHomePage::openDjWorkspaceRequested);
+            [this] {
+                emit openDjWorkspaceRequested(QString());
+            });
     pFreePlayLayout->addWidget(pFreePlayButton);
     pRootLayout->addWidget(pFreePlayCard);
 
@@ -216,22 +218,31 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     addTutorialSection(pTutorialLayout,
             tr("Basics"),
             tr("Learn the controls that make every mix work."),
-            {tr("Crossfader  —  Blend smoothly between two decks"),
-                    tr("Bass & EQ  —  Shape lows, mids, and highs"),
-                    tr("Beatmatching  —  Align tempo and phase"),
-                    tr("Cueing  —  Prepare the next track in headphones")});
+            {{QStringLiteral("crossfader"),
+                     tr("Crossfader  —  Blend smoothly between two decks")},
+                    {QStringLiteral("bass-eq"),
+                            tr("Bass & EQ  —  Shape lows, mids, and highs")},
+                    {QStringLiteral("beatmatching"),
+                            tr("Beatmatching  —  Align tempo and phase")},
+                    {QStringLiteral("cueing"),
+                            tr("Cueing  —  Prepare the next track in headphones")}});
     addTutorialSection(pTutorialLayout,
             tr("Wordplay"),
             tr("Build transitions around lyrics and memorable phrases."),
-            {tr("Starships × One More Time"),
-                    tr("XYZ  —  Your next wordplay routine"),
-                    tr("Phrase matching  —  Find the shared lyric moment")});
+            {{QStringLiteral("starships-one-more-time"),
+                     tr("Starships × One More Time")},
+                    {QStringLiteral("xyz"), tr("XYZ  —  Your next wordplay routine")},
+                    {QStringLiteral("phrase-matching"),
+                            tr("Phrase matching  —  Find the shared lyric moment")}});
     addTutorialSection(pTutorialLayout,
             tr("Transitions"),
             tr("Practice reliable ways to move between tracks."),
-            {tr("Filter sweep  —  Clear space for the next track"),
-                    tr("Echo out  —  Exit cleanly on the phrase"),
-                    tr("Stem handoff  —  Trade drums, bass, melody, and vocals")});
+            {{QStringLiteral("filter-sweep"),
+                     tr("Filter sweep  —  Clear space for the next track")},
+                    {QStringLiteral("echo-out"),
+                            tr("Echo out  —  Exit cleanly on the phrase")},
+                    {QStringLiteral("stem-handoff"),
+                            tr("Stem handoff  —  Trade drums, bass, melody, and vocals")}});
 
     pTutorialLayout->addStretch();
     pScrollArea->setWidget(pScrollContent);
@@ -241,7 +252,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
 void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
         const QString& title,
         const QString& description,
-        const QStringList& tutorials) {
+        const QList<TutorialEntry>& tutorials) {
     auto pSection = make_parented<QFrame>(pLayout->parentWidget());
     auto pSectionLayout = make_parented<QVBoxLayout>(pSection);
     pSectionLayout->setContentsMargins(0, 0, 0, 0);
@@ -267,16 +278,19 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
     pBodyLayout->setContentsMargins(12, 12, 12, 12);
     pBodyLayout->setSpacing(9);
 
-    for (const QString& tutorial : tutorials) {
-        auto pTutorialButton = make_parented<QPushButton>(tutorial, pBody);
+    for (const TutorialEntry& tutorial : tutorials) {
+        auto pTutorialButton = make_parented<QPushButton>(tutorial.title, pBody);
         pTutorialButton->setObjectName(QStringLiteral("tutorialButton"));
         pTutorialButton->setProperty("tutorialCard", true);
-        pTutorialButton->setAccessibleName(tutorial);
+        pTutorialButton->setProperty("tutorialId", tutorial.id);
+        pTutorialButton->setAccessibleName(tutorial.title);
         pTutorialButton->setCursor(Qt::PointingHandCursor);
         connect(pTutorialButton,
                 &QPushButton::clicked,
                 this,
-                &TutorialHomePage::openDjWorkspaceRequested);
+                [this, tutorialId = tutorial.id] {
+                    emit openDjWorkspaceRequested(tutorialId);
+                });
         pBodyLayout->addWidget(pTutorialButton);
     }
     pSectionLayout->addWidget(pBody);

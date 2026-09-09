@@ -17,6 +17,7 @@ class DlgKeywheel;
 class GuiTick;
 class LaunchImage;
 class TutorialHomePage;
+class QToolBar;
 class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
@@ -24,6 +25,10 @@ struct LibraryScanResultSummary;
 namespace mixxx {
 
 class CoreServices;
+
+namespace tutorial {
+class VisibilityController;
+}
 
 namespace skin {
 class SkinLoader;
@@ -95,7 +100,7 @@ class MixxxMainWindow : public QMainWindow {
 
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
-    void showDjWorkspace();
+    void showDjWorkspace(const QString& tutorialId);
 
   signals:
     void skinLoaded();
@@ -133,6 +138,9 @@ class MixxxMainWindow : public QMainWindow {
 
     QWidget* m_pCentralWidget;
     QPointer<TutorialHomePage> m_pTutorialHomePage;
+    parented_ptr<QToolBar> m_pTutorialToolBar;
+    std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
+    QString m_activeTutorialId;
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__
     Qt::WindowStates m_prevState;

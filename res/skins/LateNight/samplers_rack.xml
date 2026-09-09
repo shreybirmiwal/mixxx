@@ -33,6 +33,7 @@
   </SingletonDefinition>
 
   <WidgetGroup>
+    <ObjectName>SamplersRack</ObjectName>
     <Layout>horizontal</Layout>
     <SizePolicy>me,max</SizePolicy>
     <Children>

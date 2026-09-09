@@ -1,0 +1,21 @@
+{
+  "profiles": {
+    "crossfader": {
+      "hiddenWidgets": [
+        "ClockWidget",
+        "DecksRight",
+        "EffectsRack",
+        { "within": "Deck1_Src", "objectName": "Reverse" }
+      ]
+    },
+    "bass-eq": { "hiddenWidgets": [] },
+    "beatmatching": { "hiddenWidgets": [] },
+    "cueing": { "hiddenWidgets": [] },
+    "starships-one-more-time": { "hiddenWidgets": [] },
+    "xyz": { "hiddenWidgets": [] },
+    "phrase-matching": { "hiddenWidgets": [] },
+    "filter-sweep": { "hiddenWidgets": [] },
+    "echo-out": { "hiddenWidgets": [] },
+    "stem-handoff": { "hiddenWidgets": [] }
+  }
+}

@@ -3,8 +3,11 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDebug>
+#include <QDir>
 #include <QFileDialog>
 #include <QOpenGLContext>
+#include <QPushButton>
+#include <QToolBar>
 #include <QUrl>
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -52,6 +55,7 @@
 #include "soundio/soundmanager.h"
 #include "sources/soundsourceproxy.h"
 #include "track/track.h"
+#include "tutorial/tutorialvisibility.h"
 #include "util/debug.h"
 #include "util/desktophelper.h"
 #include "util/menubarhelper.h"
@@ -119,6 +123,28 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
 
     createMenuBar();
     m_pMenuBar->hide();
+
+    m_pTutorialToolBar = make_parented<QToolBar>(tr("Tutorial navigation"), this);
+    m_pTutorialToolBar->setObjectName(QStringLiteral("TutorialNavigation"));
+    m_pTutorialToolBar->setMovable(false);
+    m_pTutorialToolBar->setFloatable(false);
+    m_pTutorialToolBar->setAllowedAreas(Qt::TopToolBarArea);
+    m_pTutorialToolBar->setStyleSheet(QStringLiteral(
+            "QToolBar { background: #0b0d12; border: 0; padding: 7px 10px; } "
+            "QPushButton { background: #6847ed; border: 1px solid #896fff; "
+            "border-radius: 8px; color: white; font-weight: 700; padding: 7px 13px; } "
+            "QPushButton:hover { background: #795af2; }"));
+    auto pBackToMenu =
+            make_parented<QPushButton>(tr("←  Back to menu"), m_pTutorialToolBar);
+    pBackToMenu->setObjectName(QStringLiteral("backToTutorialMenuButton"));
+    pBackToMenu->setAccessibleName(tr("Back to menu"));
+    connect(pBackToMenu.get(),
+            &QPushButton::clicked,
+            this,
+            &MixxxMainWindow::showTutorialHome);
+    m_pTutorialToolBar->addWidget(pBackToMenu);
+    addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
+    m_pTutorialToolBar->hide();
 
     initializeWindow();
 
@@ -486,6 +512,11 @@ MixxxMainWindow::~MixxxMainWindow() {
     m_pCoreServices->getSettings()->set(ConfigKey("[MainWindow]", "state"),
             QString(saveState().toBase64()));
 
+    if (m_pTutorialVisibility) {
+        m_pTutorialVisibility->restore();
+        m_pTutorialVisibility.reset();
+    }
+
     // The DJ skin is detached while the embedded tutorial home is visible.
     // Restore it as the central widget so the standard skin teardown below
     // continues to own and dispose it correctly.
@@ -567,6 +598,13 @@ void MixxxMainWindow::showTutorialHome() {
         return;
     }
 
+    if (m_pTutorialVisibility) {
+        m_pTutorialVisibility->restore();
+        m_pTutorialVisibility.reset();
+    }
+    m_activeTutorialId.clear();
+    m_pTutorialToolBar->hide();
+
     QWidget* pDjWorkspace = takeCentralWidget();
     VERIFY_OR_DEBUG_ASSERT(pDjWorkspace == m_pCentralWidget) {
         if (pDjWorkspace) {
@@ -587,15 +625,28 @@ void MixxxMainWindow::showTutorialHome() {
     m_pTutorialHomePage->show();
 }
 
-void MixxxMainWindow::showDjWorkspace() {
+void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     if (!m_pCentralWidget || !m_pTutorialHomePage) {
         return;
     }
 
     QWidget* pTutorialHome = takeCentralWidget();
+    m_pTutorialHomePage.clear();
     m_pCentralWidget->setParent(this);
     setCentralWidget(m_pCentralWidget);
     m_pCentralWidget->show();
+
+    m_activeTutorialId = tutorialId;
+    m_pTutorialVisibility =
+            std::make_unique<mixxx::tutorial::VisibilityController>(m_pCentralWidget);
+    const QString profilePath = QDir(m_pCoreServices->getSettings()->getResourcePath())
+                                        .filePath(QStringLiteral(
+                                                "tutorials/visibility_profiles.json"));
+    QString error;
+    if (!m_pTutorialVisibility->applyProfile(profilePath, tutorialId, &error)) {
+        qWarning() << error;
+    }
+    m_pTutorialToolBar->show();
 
     if (pTutorialHome) {
         pTutorialHome->setParent(this);
@@ -1383,6 +1434,11 @@ void MixxxMainWindow::rebootMixxxView() {
     qDebug() << "Now in rebootMixxxView...";
     m_inRebootMixxxView = true;
 
+    if (m_pTutorialVisibility) {
+        m_pTutorialVisibility->restore();
+        m_pTutorialVisibility.reset();
+    }
+
     ScopedWaitCursor cursor;
     // safe geometry for later restoration
     const QRect initGeometry = geometry();
@@ -1427,6 +1483,18 @@ void MixxxMainWindow::rebootMixxxView() {
     m_pMenuBar->setStyleSheet(m_pCentralWidget->styleSheet());
 
     setCentralWidget(m_pCentralWidget);
+    if (m_pTutorialToolBar->isVisible()) {
+        m_pTutorialVisibility =
+                std::make_unique<mixxx::tutorial::VisibilityController>(m_pCentralWidget);
+        const QString profilePath = QDir(m_pCoreServices->getSettings()->getResourcePath())
+                                            .filePath(QStringLiteral(
+                                                    "tutorials/visibility_profiles.json"));
+        QString error;
+        if (!m_pTutorialVisibility->applyProfile(
+                    profilePath, m_activeTutorialId, &error)) {
+            qWarning() << error;
+        }
+    }
 #ifdef __LINUX__
     // don't adjustSize() on Linux as this wouldn't use the entire available area
     // to paint the new skin with X11

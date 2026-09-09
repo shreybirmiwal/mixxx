@@ -33,7 +33,7 @@
   </Template>
 
   <WidgetGroup>
-    <ObjectName>AlignTop</ObjectName>
+    <ObjectName>EffectsRack</ObjectName>
     <Layout>horizontal</Layout>
     <SizePolicy>me,max</SizePolicy>
     <Children>

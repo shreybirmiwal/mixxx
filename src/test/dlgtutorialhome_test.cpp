@@ -57,6 +57,7 @@ TEST(TutorialHomePageTest, FreePlayAndTutorialsRequestTheDjWorkspace) {
     ASSERT_NE(pFreePlay, nullptr);
     pFreePlay->click();
     EXPECT_EQ(freePlaySpy.count(), 1);
+    EXPECT_TRUE(freePlaySpy.takeFirst().at(0).toString().isEmpty());
 
     TutorialHomePage tutorialHome;
     QSignalSpy tutorialSpy(
@@ -64,8 +65,11 @@ TEST(TutorialHomePageTest, FreePlayAndTutorialsRequestTheDjWorkspace) {
     const auto tutorials =
             childrenWithProperty<QPushButton>(&tutorialHome, "tutorialCard");
     ASSERT_FALSE(tutorials.isEmpty());
+    const QString tutorialId = tutorials.first()->property("tutorialId").toString();
+    EXPECT_FALSE(tutorialId.isEmpty());
     tutorials.first()->click();
     EXPECT_EQ(tutorialSpy.count(), 1);
+    EXPECT_EQ(tutorialSpy.takeFirst().at(0).toString(), tutorialId);
 }
 
 TEST(TutorialHomePageTest, UpdatesAreReportedInsideThePage) {

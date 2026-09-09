@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QString>
-#include <QStringList>
+#include <QList>
 #include <QWidget>
 
 class QLabel;
@@ -14,17 +14,22 @@ class TutorialHomePage final : public QWidget {
     explicit TutorialHomePage(QWidget* parent = nullptr);
 
   signals:
-    void openDjWorkspaceRequested();
+    void openDjWorkspaceRequested(const QString& tutorialId);
 
   private slots:
     void showUpdateStatus();
     void updateSectionArrow(bool expanded);
 
   private:
+    struct TutorialEntry {
+        QString id;
+        QString title;
+    };
+
     void addTutorialSection(QVBoxLayout* pLayout,
             const QString& title,
             const QString& description,
-            const QStringList& tutorials);
+            const QList<TutorialEntry>& tutorials);
 
     QLabel* m_pUpdateStatus;
 };

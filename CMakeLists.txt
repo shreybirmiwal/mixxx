@@ -1628,6 +1628,7 @@ add_library(
   src/track/tracknumbers.cpp
   src/track/trackrecord.cpp
   src/track/trackref.cpp
+  src/tutorial/tutorialvisibility.cpp
   src/util/autofilereloader.cpp
   src/util/battery/battery.cpp
   src/util/cache.cpp
@@ -2920,6 +2921,7 @@ if(BUILD_TESTING)
     src/test/duration_test.cpp
     src/test/dlgtutorialhome_test.cpp
     src/test/durationutiltest.cpp
+    src/test/tutorialvisibility_test.cpp
     #TODO: write useful tests for refactored effects system
     #src/test/effectchainslottest.cpp
     src/test/enginebufferscalelineartest.cpp

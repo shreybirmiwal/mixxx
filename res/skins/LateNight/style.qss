@@ -984,7 +984,7 @@ WLibrarySidebar {
   qproperty-layoutAlignment: 'AlignHCenter | AlignTop';
 }
 
-#AlignTop {
+#AlignTop, #EffectsRack {
   qproperty-layoutAlignment: 'AlignTop';
 }
 
