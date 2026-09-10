@@ -1251,6 +1251,7 @@ add_library(
   src/dialog/dlgreplacecuecolor.cpp
   src/dialog/dlgreplacecuecolordlg.ui
   src/dialog/dlgtutorialhome.cpp
+  src/dialog/dlgtutorialcreator.cpp
   src/effects/backends/builtin/autopaneffect.cpp
   src/effects/backends/builtin/balanceeffect.cpp
   src/effects/backends/builtin/bessel4lvmixeqeffect.cpp
@@ -1629,6 +1630,7 @@ add_library(
   src/track/trackrecord.cpp
   src/track/trackref.cpp
   src/tutorial/tutorialcatalog.cpp
+  src/tutorial/tutorialrecording.cpp
   src/tutorial/tutorialvisibility.cpp
   src/tutorial/tutorialvisibilitypanel.cpp
   src/util/autofilereloader.cpp
@@ -2930,6 +2932,7 @@ if(BUILD_TESTING)
     src/test/dlgtutorialhome_test.cpp
     src/test/durationutiltest.cpp
     src/test/tutorialcatalog_test.cpp
+    src/test/tutorialrecording_test.cpp
     src/test/tutorialvisibility_test.cpp
     #TODO: write useful tests for refactored effects system
     #src/test/effectchainslottest.cpp

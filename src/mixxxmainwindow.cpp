@@ -48,6 +48,7 @@
 #include "dialog/dlgabout.h"
 #include "dialog/dlgdevelopertools.h"
 #include "dialog/dlgkeywheel.h"
+#include "dialog/dlgtutorialcreator.h"
 #include "dialog/dlgtutorialhome.h"
 #include "moc_mixxxmainwindow.cpp"
 #include "preferences/dialog/dlgpreferences.h"
@@ -1499,6 +1500,9 @@ void MixxxMainWindow::showTutorialHome() {
         return;
     }
 
+    if (m_pTutorialCreator) {
+        m_pTutorialCreator->close();
+    }
     resetTutorialSession();
     if (m_pTutorialVisibility) {
         m_pTutorialVisibilityPanel->setController(nullptr);
@@ -1541,8 +1545,29 @@ void MixxxMainWindow::showTutorialHome() {
             &TutorialHomePage::openDjWorkspaceRequested,
             this,
             &MixxxMainWindow::showDjWorkspace);
+    connect(pTutorialHome.get(),
+            &TutorialHomePage::createTutorialRequested,
+            this,
+            &MixxxMainWindow::showTutorialCreator);
     setCentralWidget(pTutorialHome);
     m_pTutorialHomePage->show();
+}
+
+void MixxxMainWindow::showTutorialCreator() {
+    if (m_pTutorialCreator) {
+        m_pTutorialCreator->show();
+        m_pTutorialCreator->raise();
+        m_pTutorialCreator->activateWindow();
+        return;
+    }
+    if (m_pTutorialHomePage) {
+        showDjWorkspace(QString());
+    }
+    m_pTutorialVisibilityPanel->hide();
+    m_pTutorialCreator = new DlgTutorialCreator(this);
+    m_pTutorialCreator->show();
+    m_pTutorialCreator->raise();
+    m_pTutorialCreator->activateWindow();
 }
 
 void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {

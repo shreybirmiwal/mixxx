@@ -30,6 +30,7 @@ TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
     EXPECT_NE(home.findChild<QScrollArea*>(QStringLiteral("tutorialScrollArea")), nullptr);
     EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("updatesButton")), nullptr);
     EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("freePlayButton")), nullptr);
+    EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("createTutorialButton")), nullptr);
     EXPECT_EQ(childrenWithProperty<QToolButton>(&home, "sectionHeader").size(), 4);
     const auto tutorials =
             childrenWithProperty<QFrame>(&home, "lessonCard");
@@ -46,6 +47,16 @@ TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("filter-sweep")));
     EXPECT_EQ(childrenWithProperty<QPushButton>(&home, "startLesson").size(), 8);
     EXPECT_EQ(childrenWithProperty<QLabel>(&home, "comingSoon").size(), 2);
+}
+
+TEST(TutorialHomePageTest, CreateTutorialRequestsTheRecorder) {
+    TutorialHomePage home;
+    QSignalSpy spy(&home, &TutorialHomePage::createTutorialRequested);
+    auto* pCreate =
+            home.findChild<QPushButton*>(QStringLiteral("createTutorialButton"));
+    ASSERT_NE(pCreate, nullptr);
+    pCreate->click();
+    EXPECT_EQ(spy.count(), 1);
 }
 
 TEST(TutorialHomePageTest, SectionHeadersToggleTheirContent) {

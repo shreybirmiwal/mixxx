@@ -15,6 +15,7 @@ class TutorialHomePage final : public QWidget {
 
   signals:
     void openDjWorkspaceRequested(const QString& tutorialId);
+    void createTutorialRequested();
 
   private slots:
     void showUpdateStatus();

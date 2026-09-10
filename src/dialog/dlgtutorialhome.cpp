@@ -133,6 +133,19 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             border-color: #445363;
             color: #dce5ee;
         }
+        QPushButton#createTutorialButton {
+            background: #153d2e;
+            border: 1px solid #2c7a58;
+            border-radius: 7px;
+            color: #80ebbc;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 7px 11px;
+        }
+        QPushButton#createTutorialButton:hover {
+            background: #1d503c;
+            border-color: #48ae80;
+        }
         QLabel#updateStatus {
             background: #101b18;
             border: 1px solid #214b39;
@@ -360,6 +373,16 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     pHeadingLayout->addWidget(pTitle);
     pHeadingLayout->addWidget(pSubtitle);
     pTopBar->addWidget(pHeadingWidget, 1);
+
+    auto pCreateTutorial = make_parented<QPushButton>(tr("Create tutorial"), pTopBarWidget);
+    pCreateTutorial->setObjectName(QStringLiteral("createTutorialButton"));
+    pCreateTutorial->setAccessibleName(tr("Create a tutorial"));
+    pCreateTutorial->setCursor(Qt::PointingHandCursor);
+    connect(pCreateTutorial,
+            &QPushButton::clicked,
+            this,
+            &TutorialHomePage::createTutorialRequested);
+    pTopBar->addWidget(pCreateTutorial);
 
     auto pUpdatesButton = make_parented<QPushButton>(tr("Check for updates"), pTopBarWidget);
     pUpdatesButton->setObjectName(QStringLiteral("updatesButton"));

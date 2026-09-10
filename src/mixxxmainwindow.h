@@ -15,6 +15,7 @@ class ControlObject;
 class ControlProxy;
 class DlgDeveloperTools;
 class DlgPreferences;
+class DlgTutorialCreator;
 class DlgKeywheel;
 class GuiTick;
 class LaunchImage;
@@ -108,6 +109,7 @@ class MixxxMainWindow : public QMainWindow {
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
     void showDjWorkspace(const QString& tutorialId);
+    void showTutorialCreator();
 
   signals:
     void skinLoaded();
@@ -167,6 +169,7 @@ class MixxxMainWindow : public QMainWindow {
 
     QWidget* m_pCentralWidget;
     QPointer<TutorialHomePage> m_pTutorialHomePage;
+    QPointer<DlgTutorialCreator> m_pTutorialCreator;
     parented_ptr<QToolBar> m_pTutorialToolBar;
     parented_ptr<QLabel> m_pTutorialTrackLabel;
     parented_ptr<QLabel> m_pTutorialGuideLabel;

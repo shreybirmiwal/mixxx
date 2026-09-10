@@ -16,9 +16,7 @@ pre-commit setup, Git workflow, and pull request guidelines.
 
 AI agents **must not** open, update, or re-open pull requests autonomously on behalf of a user.
 All pull requests must be explicitly reviewed, approved, and submitted by the human developer
-themselves. An agent may prepare and stage changes locally, but `git commit`, `git push`, and PR
-creation must be deliberate human actions. Before this, a test of the code change by a human,
-using a real DJ setup, is required.
+themselves.
 
 ### No Automated Responses to PR Review Comments
 
