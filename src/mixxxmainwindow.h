@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QList>
 #include <QPointer>
 #include <QString>
 #include <memory>
@@ -138,6 +139,8 @@ class MixxxMainWindow : public QMainWindow {
     void finishTutorialSession();
     void resetTutorialSession();
     void pauseTutorialDecks();
+    void updateTutorialStateGuards();
+    void clearTutorialStateGuards();
     QWidget* findTutorialGuideTarget(const QString& objectName = {},
             const QString& within = {},
             const QString& tooltipId = {},
@@ -163,6 +166,7 @@ class MixxxMainWindow : public QMainWindow {
     parented_ptr<QPushButton> m_pTutorialCheckNext;
     QAction* m_pTutorialCheckNextAction{nullptr};
     parented_ptr<QTimer> m_pTutorialStepTimer;
+    parented_ptr<QTimer> m_pTutorialStateTimer;
     QPointer<TutorialFocusOverlay> m_pTutorialFocusOverlay;
     parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;
     std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
@@ -173,6 +177,7 @@ class MixxxMainWindow : public QMainWindow {
     bool m_tutorialStepCompleted{false};
     double m_tutorialControlBaseline{0.0};
     std::unique_ptr<ControlProxy> m_pTutorialActionControl;
+    QList<QPointer<QWidget>> m_tutorialStateLockedWidgets;
     bool m_showTutorialHomeWhenSkinLoaded{false};
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__

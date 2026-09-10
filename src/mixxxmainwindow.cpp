@@ -11,6 +11,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontMetrics>
+#include <QHash>
 #include <QLabel>
 #include <QOpenGLContext>
 #include <QPainter>
@@ -206,6 +207,13 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
                         {}, TutorialAction::ControlChanged,
                         QStringLiteral("[Channel1]"), QStringLiteral("volume"),
                         0.02, 0, true, 1400},
+                {QObject::tr("Start the right song"),
+                        QObject::tr("Press Play on the right deck. A crossfader can only demonstrate a real blend when both songs are running."),
+                        QStringLiteral("PlayDeck"),
+                        QStringLiteral("Deck2_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel2]"), QStringLiteral("play"),
+                        0.01, 0, false, 1200},
                 {QObject::tr("Blend with the crossfader"),
                         QObject::tr("Left plays only the left deck, right plays only the right deck, and the center blends both. Move it slowly from one side to the other to make your first transition."),
                         {},
@@ -213,7 +221,7 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
                         QStringLiteral("crossfader"),
                         {}, {}, TutorialAction::ControlChanged,
                         QStringLiteral("[Master]"), QStringLiteral("crossfader"),
-                        0.04, 0, true, 1800},
+                        0.04, 0, false, 1800},
         };
     }
     if (tutorialId == QStringLiteral("crossfader")) {
@@ -492,6 +500,48 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
         };
     }
     return {};
+}
+
+QHash<QString, double> tutorialStateRequirements(
+        const QString& tutorialId, int step, bool stepCompleted) {
+    QHash<QString, double> requirements;
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(tutorialId);
+    if (step < 0 || step >= steps.size()) {
+        return requirements;
+    }
+
+    for (int previous = 0; previous < step; ++previous) {
+        const TutorialGuideStep& earlier = steps.at(previous);
+        if (earlier.action == TutorialAction::ControlPositive &&
+                earlier.actionItem == QStringLiteral("play") &&
+                !earlier.actionGroup.isEmpty()) {
+            requirements.insert(earlier.actionGroup, 1.0);
+        }
+    }
+
+    const TutorialGuideStep& current = steps.at(step);
+    if (current.action == TutorialAction::ControlPositive &&
+            current.actionItem == QStringLiteral("play") &&
+            !current.actionGroup.isEmpty()) {
+        if (stepCompleted) {
+            requirements.insert(current.actionGroup, 1.0);
+        } else {
+            // The learner must be able to operate the currently highlighted
+            // Play button, even if this deck was played earlier in the lesson.
+            requirements.remove(current.actionGroup);
+        }
+    }
+
+    if (current.pauseOnEnter && !stepCompleted) {
+        for (auto it = requirements.begin(); it != requirements.end(); ++it) {
+            it.value() = 0.0;
+        }
+    }
+    if (current.actionItem == QStringLiteral("cue_default") && stepCompleted &&
+            !current.actionGroup.isEmpty()) {
+        requirements.insert(current.actionGroup, 0.0);
+    }
+    return requirements;
 }
 } // namespace
 
@@ -803,6 +853,12 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             &QTimer::timeout,
             this,
             &MixxxMainWindow::updateTutorialStepTimer);
+    m_pTutorialStateTimer = make_parented<QTimer>(this);
+    m_pTutorialStateTimer->setInterval(100);
+    connect(m_pTutorialStateTimer,
+            &QTimer::timeout,
+            this,
+            &MixxxMainWindow::updateTutorialStateGuards);
     addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
     m_pTutorialToolBar->hide();
 
@@ -1529,6 +1585,8 @@ void MixxxMainWindow::showTutorialGuideStep(int step) {
                 steps.size());
     }
     armTutorialStep();
+    updateTutorialStateGuards();
+    m_pTutorialStateTimer->start();
 }
 
 void MixxxMainWindow::armTutorialStep() {
@@ -1671,6 +1729,7 @@ void MixxxMainWindow::completeTutorialStep() {
     }
     m_tutorialStepCompleted = true;
     m_pTutorialStepTimer->stop();
+    updateTutorialStateGuards();
 
     const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
     if (m_tutorialGuideStep < 0 || m_tutorialGuideStep >= steps.size()) {
@@ -1731,7 +1790,9 @@ void MixxxMainWindow::completeTutorialStep() {
 
 void MixxxMainWindow::finishTutorialSession() {
     m_pTutorialStepTimer->stop();
+    m_pTutorialStateTimer->stop();
     m_pTutorialActionControl.reset();
+    clearTutorialStateGuards();
 
     const QString title = tr("All done!  ✓");
     const QString detail = tr("You finished the lesson. Keep practicing freely with this focused layout—your songs, controls, and settings will stay exactly as they are.");
@@ -1759,7 +1820,12 @@ void MixxxMainWindow::resetTutorialSession() {
     if (m_pTutorialStepTimer) {
         m_pTutorialStepTimer->stop();
     }
+    if (m_pTutorialStateTimer) {
+        m_pTutorialStateTimer->stop();
+    }
+    clearTutorialStateGuards();
     m_pTutorialActionControl.reset();
+    m_tutorialGuideStep = 0;
     m_tutorialStepCompleted = false;
 
     const auto pPlayerManager = m_pCoreServices->getPlayerManager();
@@ -1817,6 +1883,53 @@ void MixxxMainWindow::resetTutorialSession() {
                         QStringLiteral("enabled")),
                 1.0);
     }
+}
+
+void MixxxMainWindow::updateTutorialStateGuards() {
+    const QHash<QString, double> requirements = tutorialStateRequirements(
+            m_activeTutorialId, m_tutorialGuideStep, m_tutorialStepCompleted);
+
+    QList<QPointer<QWidget>> requiredLocks;
+    for (auto it = requirements.constBegin(); it != requirements.constEnd(); ++it) {
+        const ConfigKey playKey(it.key(), QStringLiteral("play"));
+        if (qAbs(ControlObject::get(playKey) - it.value()) > 0.001) {
+            ControlObject::set(playKey, it.value());
+        }
+
+        int deckNumber = 0;
+        if (!PlayerManager::isDeckGroup(it.key(), &deckNumber)) {
+            continue;
+        }
+        QWidget* pPlayButton = findTutorialGuideTarget(
+                QStringLiteral("PlayDeck"),
+                QStringLiteral("Deck%1_Src").arg(deckNumber));
+        if (pPlayButton) {
+            requiredLocks.append(pPlayButton);
+        }
+    }
+
+    for (const QPointer<QWidget>& pWidget :
+            std::as_const(m_tutorialStateLockedWidgets)) {
+        if (pWidget && !requiredLocks.contains(pWidget)) {
+            pWidget->setEnabled(true);
+        }
+    }
+    for (const QPointer<QWidget>& pWidget : std::as_const(requiredLocks)) {
+        if (pWidget) {
+            pWidget->setEnabled(false);
+        }
+    }
+    m_tutorialStateLockedWidgets = requiredLocks;
+}
+
+void MixxxMainWindow::clearTutorialStateGuards() {
+    for (const QPointer<QWidget>& pWidget :
+            std::as_const(m_tutorialStateLockedWidgets)) {
+        if (pWidget) {
+            pWidget->setEnabled(true);
+        }
+    }
+    m_tutorialStateLockedWidgets.clear();
 }
 
 void MixxxMainWindow::pauseTutorialDecks() {
