@@ -8,10 +8,23 @@
 #include <QWidget>
 #include <utility>
 
+#include "control/controlobject.h"
+#include "widget/wbasewidget.h"
+
 namespace mixxx::tutorial {
 
 VisibilityController::VisibilityController(QWidget* pSkinRoot)
         : m_pSkinRoot(pSkinRoot) {
+    const QList<QWidget*> widgets = controllableWidgets();
+    for (QWidget* pWidget : widgets) {
+        if (pWidget == m_pSkinRoot || pWidget->isVisibleTo(m_pSkinRoot)) {
+            m_initiallyVisibleWidgets.insert(pWidget);
+        }
+    }
+}
+
+VisibilityController::~VisibilityController() {
+    restore();
 }
 
 bool VisibilityController::applyProfile(const QString& filePath,
@@ -40,6 +53,7 @@ bool VisibilityController::applyProfile(const QString& filePath,
 
 void VisibilityController::restore() {
     restoreAppliedStates();
+    releaseFrozenControls();
     m_hiddenWidgets.clear();
 }
 
@@ -300,6 +314,75 @@ void VisibilityController::refreshHiddenStates() {
             applyHiddenState(pWidget);
         }
     }
+    refreshFrozenControls();
+}
+
+bool VisibilityController::isEffectivelyHidden(QWidget* pWidget) const {
+    for (QWidget* pCurrent = pWidget; pCurrent;
+            pCurrent = pCurrent->parentWidget()) {
+        if (m_hiddenWidgets.contains(pCurrent)) {
+            return true;
+        }
+        if (pCurrent == m_pSkinRoot) {
+            break;
+        }
+    }
+    return false;
+}
+
+void VisibilityController::refreshFrozenControls() {
+    QHash<ConfigKey, int> editorCounts;
+    QHash<ConfigKey, int> hiddenEditorCounts;
+    for (QWidget* pWidget : std::as_const(m_initiallyVisibleWidgets)) {
+        auto* pBaseWidget = dynamic_cast<WBaseWidget*>(pWidget);
+        if (!pBaseWidget) {
+            continue;
+        }
+        const QList<ConfigKey> keys = pBaseWidget->inputControlKeys();
+        for (const ConfigKey& key : keys) {
+            ++editorCounts[key];
+            if (isEffectivelyHidden(pWidget)) {
+                ++hiddenEditorCounts[key];
+            }
+        }
+    }
+
+    QSet<ConfigKey> keysToFreeze;
+    for (auto it = editorCounts.constBegin(); it != editorCounts.constEnd(); ++it) {
+        if (hiddenEditorCounts.value(it.key()) == it.value() &&
+                ControlObject::exists(it.key())) {
+            keysToFreeze.insert(it.key());
+        }
+    }
+
+    const QSet<ConfigKey> keysToRelease = m_frozenControlKeys - keysToFreeze;
+    for (const ConfigKey& key : keysToRelease) {
+        ControlObject* pControl =
+                ControlObject::getControl(key, ControlFlag::NoWarnIfMissing);
+        if (pControl) {
+            pControl->setFrozenAtDefault(false);
+        }
+    }
+    const QSet<ConfigKey> newKeys = keysToFreeze - m_frozenControlKeys;
+    for (const ConfigKey& key : newKeys) {
+        ControlObject* pControl =
+                ControlObject::getControl(key, ControlFlag::NoWarnIfMissing);
+        if (pControl) {
+            pControl->setFrozenAtDefault(true);
+        }
+    }
+    m_frozenControlKeys = keysToFreeze;
+}
+
+void VisibilityController::releaseFrozenControls() {
+    for (const ConfigKey& key : std::as_const(m_frozenControlKeys)) {
+        ControlObject* pControl =
+                ControlObject::getControl(key, ControlFlag::NoWarnIfMissing);
+        if (pControl) {
+            pControl->setFrozenAtDefault(false);
+        }
+    }
+    m_frozenControlKeys.clear();
 }
 
 } // namespace mixxx::tutorial

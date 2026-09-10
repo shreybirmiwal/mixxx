@@ -10,6 +10,13 @@ every parsed skin item with a live checkbox, supports metadata search, and has
 **All on** / **All off** controls. This panel is temporary builder UI and does
 not appear on the tutorial home page.
 
+When every active editor for an input is hidden, that input immediately resets
+to its Mixxx-defined default and stays locked there. Keyboard shortcuts, MIDI,
+controllers, and programmatic updates cannot change it while hidden. Showing
+any active editor for that same input unlocks it again. Display-only widgets do
+not freeze their source values, and shared inputs stay active as long as one of
+their editors remains visible.
+
 Use `widgetStates` for explicit lesson configuration:
 
 ```json

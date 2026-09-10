@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QOpenGLContext>
 #include <QPushButton>
+#include <QScreen>
 #include <QToolBar>
 #include <QUrl>
 
@@ -157,7 +158,7 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             make_parented<mixxx::tutorial::VisibilityPanel>(this);
     addDockWidget(Qt::RightDockWidgetArea, m_pTutorialVisibilityPanel);
     m_pTutorialVisibilityPanel->setFloating(true);
-    m_pTutorialVisibilityPanel->resize(440, 700);
+    m_pTutorialVisibilityPanel->resize(620, 800);
     m_pTutorialVisibilityPanel->hide();
     connect(pAdminControls.get(), &QPushButton::clicked, this, [this] {
         m_pTutorialVisibilityPanel->setVisible(
@@ -668,7 +669,17 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
         qWarning() << error;
     }
     m_pTutorialVisibilityPanel->setController(m_pTutorialVisibility.get());
+    if (QScreen* pScreen = screen()) {
+        const QRect available = pScreen->availableGeometry();
+        m_pTutorialVisibilityPanel->move(
+                qBound(available.left(),
+                        frameGeometry().left() + 20,
+                        available.right() -
+                                m_pTutorialVisibilityPanel->width()),
+                available.top() + 40);
+    }
     m_pTutorialVisibilityPanel->show();
+    m_pTutorialVisibilityPanel->raise();
     m_pTutorialToolBar->show();
 
     if (pTutorialHome) {

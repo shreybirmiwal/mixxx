@@ -29,6 +29,25 @@ TEST_F(ControlObjectTest, SetGet) {
     EXPECT_DOUBLE_EQ(2.0, co2->get());
 }
 
+TEST_F(ControlObjectTest, FrozenAtDefaultRejectsEverySetPath) {
+    ConfigKey key("[TutorialTest]", "frozen");
+    ControlObject control(key, true, false, false, 0.25);
+    control.set(0.8);
+    ASSERT_DOUBLE_EQ(control.get(), 0.8);
+
+    control.setFrozenAtDefault(true);
+    EXPECT_TRUE(control.isFrozenAtDefault());
+    EXPECT_DOUBLE_EQ(control.get(), 0.25);
+    control.set(0.7);
+    EXPECT_DOUBLE_EQ(control.get(), 0.25);
+    control.forceSet(0.9);
+    EXPECT_DOUBLE_EQ(control.get(), 0.25);
+
+    control.setFrozenAtDefault(false);
+    control.set(0.6);
+    EXPECT_DOUBLE_EQ(control.get(), 0.6);
+}
+
 TEST_F(ControlObjectTest, getControl) {
     EXPECT_EQ(ControlObject::getControl(ck1), co1.get());
     EXPECT_EQ(ControlObject::getControl(ck2), co2.get());

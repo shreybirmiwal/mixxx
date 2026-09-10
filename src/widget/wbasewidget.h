@@ -75,6 +75,11 @@ class WBaseWidget {
             std::unique_ptr<ControlParameterWidgetConnection> pConnection,
             ConnectionSide side);
 
+    /// Controls this widget can modify, excluding display-only/property
+    /// connections. Direction defaults have been resolved by widget setup by
+    /// the time tutorial visibility queries this list.
+    QList<ConfigKey> inputControlKeys() const;
+
     double getControlParameter() const;
     double getControlParameterLeft() const;
     double getControlParameterRight() const;

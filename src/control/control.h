@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <QAtomicPointer>
 #include <QHash>
 #include <QObject>
@@ -101,6 +103,12 @@ class ControlDoublePrivate : public QObject {
     }
     // Resets the control value to its default.
     void reset();
+    // While frozen, all set paths resolve to the default value. This is used
+    // by focused tutorials to make hidden inputs inert.
+    void setFrozenAtDefault(bool frozen);
+    bool isFrozenAtDefault() const {
+        return m_frozenAtDefault.load(std::memory_order_acquire);
+    }
 
     // Set the behavior to be used when setting values and translating between
     // parameter and value space. Returns the previously set behavior (if any).
@@ -124,6 +132,9 @@ class ControlDoublePrivate : public QObject {
 
     void setDefaultValue(double dValue) {
         m_defaultValue.setValue(dValue);
+        if (isFrozenAtDefault()) {
+            setInner(dValue, nullptr);
+        }
     }
 
     double defaultValue() const {
@@ -220,6 +231,8 @@ class ControlDoublePrivate : public QObject {
 
     // If true, this control will be issued repeatedly if the keyboard key is held.
     bool m_kbdRepeatable;
+
+    std::atomic_bool m_frozenAtDefault;
 
 };
 

@@ -132,6 +132,15 @@ class ControlObject : public QObject {
         return m_pControl ? m_pControl->defaultValue() : 0.0;
     }
 
+    void setFrozenAtDefault(bool frozen) {
+        if (m_pControl) {
+            m_pControl->setFrozenAtDefault(frozen);
+        }
+    }
+    bool isFrozenAtDefault() const {
+        return m_pControl && m_pControl->isFrozenAtDefault();
+    }
+
     // Returns the parameterized value of the object. Thread safe, non-blocking.
     virtual double getParameter() const;
 

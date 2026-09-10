@@ -64,7 +64,8 @@ ControlDoublePrivate::ControlDoublePrivate(
           m_confirmRequired(confirmRequired),
           m_bPersistInConfiguration(bPersist),
           m_bIgnoreNops(bIgnoreNops),
-          m_kbdRepeatable(false) {
+          m_kbdRepeatable(false),
+          m_frozenAtDefault(false) {
     if (bPersist) {
         UserSettingsPointer pConfig = s_pUserConfig;
         if (pConfig) {
@@ -266,7 +267,18 @@ void ControlDoublePrivate::reset() {
     set(defaultValue, nullptr);
 }
 
+void ControlDoublePrivate::setFrozenAtDefault(bool frozen) {
+    m_frozenAtDefault.store(frozen, std::memory_order_release);
+    if (frozen) {
+        setInner(defaultValue(), nullptr);
+    }
+}
+
 void ControlDoublePrivate::set(double value, QObject* pSender) {
+    if (isFrozenAtDefault()) {
+        setInner(defaultValue(), pSender);
+        return;
+    }
     // If the behavior says to ignore the set, ignore it.
     QSharedPointer<ControlNumericBehavior> pBehavior = m_pBehavior;
     if (!pBehavior.isNull() && !pBehavior->setFilter(&value)) {
@@ -284,6 +296,9 @@ void ControlDoublePrivate::setAndConfirm(double value, QObject* pSender) {
 }
 
 void ControlDoublePrivate::setInner(double value, QObject* pSender) {
+    if (isFrozenAtDefault()) {
+        value = defaultValue();
+    }
     if (m_bIgnoreNops && get() == value) {
         return;
     }

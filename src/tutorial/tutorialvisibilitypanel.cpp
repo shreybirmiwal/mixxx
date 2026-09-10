@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -21,7 +22,7 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
             QDockWidget::DockWidgetFloatable);
-    setMinimumWidth(390);
+    setMinimumWidth(560);
 
     auto* pContainer = new QWidget(this);
     auto* pLayout = new QVBoxLayout(pContainer);
@@ -30,7 +31,8 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
 
     auto* pIntro = new QLabel(
             tr("Builder mode: uncheck anything to remove it without changing "
-               "the original layout. Checking an item turns its parent path on."),
+               "the original layout. Hidden inputs reset and stay locked at "
+               "their defaults. Checking an item turns its parent path on."),
             pContainer);
     pIntro->setWordWrap(true);
     pLayout->addWidget(pIntro);
@@ -53,6 +55,11 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
     m_pCountLabel = new QLabel(pContainer);
     pLayout->addWidget(m_pCountLabel);
 
+    m_pSelectionLabel = new QLabel(pContainer);
+    m_pSelectionLabel->setWordWrap(true);
+    m_pSelectionLabel->setText(tr("Exact target: none selected"));
+    pLayout->addWidget(m_pSelectionLabel);
+
     m_pTree = new QTreeWidget(pContainer);
     m_pTree->setObjectName(QStringLiteral("tutorialAdminWidgetTree"));
     m_pTree->setColumnCount(2);
@@ -60,7 +67,7 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
     m_pTree->setAlternatingRowColors(true);
     m_pTree->setUniformRowHeights(true);
     m_pTree->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_pTree->header()->resizeSection(0, 205);
+    m_pTree->header()->resizeSection(0, 345);
     pLayout->addWidget(m_pTree, 1);
 
     setWidget(pContainer);
@@ -86,8 +93,22 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
         }
     });
     connect(m_pSearch, &QLineEdit::textChanged, this, [this](const QString& query) {
+        const QString trimmedQuery = query.trimmed();
         for (int i = 0; i < m_pTree->topLevelItemCount(); ++i) {
-            applyFilter(m_pTree->topLevelItem(i), query.trimmed());
+            applyFilter(m_pTree->topLevelItem(i), trimmedQuery);
+        }
+        if (trimmedQuery.isEmpty()) {
+            return;
+        }
+        for (QTreeWidgetItemIterator it(m_pTree); *it; ++it) {
+            QTreeWidgetItem* pItem = *it;
+            if (pItem->text(0).contains(trimmedQuery, Qt::CaseInsensitive) ||
+                    pItem->text(1).contains(trimmedQuery, Qt::CaseInsensitive)) {
+                m_pTree->setCurrentItem(pItem);
+                m_pTree->scrollToItem(
+                        pItem, QAbstractItemView::PositionAtCenter);
+                break;
+            }
         }
     });
     connect(m_pTree,
@@ -105,6 +126,18 @@ VisibilityPanel::VisibilityPanel(QWidget* parent)
                         pWidget, pItem->checkState(0) == Qt::Checked);
                 updateChecks();
             });
+    connect(m_pTree,
+            &QTreeWidget::currentItemChanged,
+            this,
+            [this](QTreeWidgetItem* pCurrent) {
+                if (!pCurrent) {
+                    m_pSelectionLabel->setText(tr("Exact target: none selected"));
+                    return;
+                }
+                m_pSelectionLabel->setText(
+                        tr("Exact target: %1 · %2")
+                                .arg(pCurrent->text(0), pCurrent->text(1)));
+            });
 }
 
 void VisibilityPanel::setController(VisibilityController* pController) {
@@ -120,7 +153,9 @@ void VisibilityPanel::rebuild() {
     if (m_pController && m_pSkinRoot) {
         addWidgetTree(m_pSkinRoot, nullptr);
     }
-    m_pCountLabel->setText(tr("%1 controllable items").arg(m_widgets.size()));
+    m_pCountLabel->setText(tr("%1 controllable items · %2 inputs locked")
+                                   .arg(m_widgets.size())
+                                   .arg(m_pController ? m_pController->frozenControlCount() : 0));
     m_pTree->expandToDepth(1);
     m_updating = false;
     updateChecks();
@@ -168,6 +203,9 @@ void VisibilityPanel::updateChecks() {
                                                                          : Qt::Unchecked);
         }
     }
+    m_pCountLabel->setText(tr("%1 controllable items · %2 inputs locked")
+                                   .arg(m_widgets.size())
+                                   .arg(m_pController->frozenControlCount()));
     m_updating = false;
 }
 
@@ -215,6 +253,11 @@ QString VisibilityPanel::widgetDetails(QWidget* pWidget) const {
     const QString tooltipId = pWidget->property("mixxxTooltipId").toString();
     const QStringList controlKeys =
             pWidget->property("mixxxControlKeys").toStringList();
+    if (m_pController) {
+        details.append(m_pController->isWidgetInitiallyActive(pWidget)
+                        ? tr("ACTIVE")
+                        : tr("inactive layout"));
+    }
     if (!widgetType.isEmpty()) {
         details.append(widgetType);
     }

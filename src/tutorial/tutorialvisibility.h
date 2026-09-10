@@ -6,6 +6,8 @@
 #include <QSizePolicy>
 #include <QString>
 
+#include "preferences/configobject.h"
+
 class QWidget;
 
 namespace mixxx::tutorial {
@@ -29,6 +31,7 @@ struct WidgetSelector {
 class VisibilityController final {
   public:
     explicit VisibilityController(QWidget* pSkinRoot);
+    ~VisibilityController();
 
     bool applyProfile(const QString& filePath,
             const QString& profileId,
@@ -40,10 +43,16 @@ class VisibilityController final {
     /// requested item can actually be seen.
     QList<QWidget*> controllableWidgets() const;
     bool isControllableWidget(QWidget* pWidget) const;
+    bool isWidgetInitiallyActive(QWidget* pWidget) const {
+        return m_initiallyVisibleWidgets.contains(pWidget);
+    }
     bool isWidgetExplicitlyVisible(QWidget* pWidget) const;
     void setWidgetVisible(QWidget* pWidget, bool visible);
     void setWidgetTreeVisible(QWidget* pWidget, bool visible);
     void setAllWidgetsVisible(bool visible);
+    int frozenControlCount() const {
+        return m_frozenControlKeys.size();
+    }
 
     static QList<WidgetSelector> loadProfile(const QString& filePath,
             const QString& profileId,
@@ -61,9 +70,14 @@ class VisibilityController final {
     void applyHiddenState(QWidget* pWidget);
     void restoreAppliedStates();
     void refreshHiddenStates();
+    bool isEffectivelyHidden(QWidget* pWidget) const;
+    void refreshFrozenControls();
+    void releaseFrozenControls();
 
     QWidget* m_pSkinRoot;
+    QSet<QWidget*> m_initiallyVisibleWidgets;
     QSet<QWidget*> m_hiddenWidgets;
+    QSet<ConfigKey> m_frozenControlKeys;
     QList<WidgetState> m_widgetStates;
 };
 

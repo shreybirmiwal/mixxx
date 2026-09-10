@@ -33,6 +33,7 @@ class VisibilityPanel final : public QDockWidget {
     QWidget* m_pSkinRoot{nullptr};
     QLineEdit* m_pSearch{nullptr};
     QLabel* m_pCountLabel{nullptr};
+    QLabel* m_pSelectionLabel{nullptr};
     QTreeWidget* m_pTree{nullptr};
     QHash<QTreeWidgetItem*, QPointer<QWidget>> m_widgets;
     bool m_updating{false};

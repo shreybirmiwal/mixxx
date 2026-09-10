@@ -47,6 +47,23 @@ void WBaseWidget::addPropertyConnection(
     m_propertyConnections.push_back(std::move(pConnection));
 }
 
+QList<ConfigKey> WBaseWidget::inputControlKeys() const {
+    QList<ConfigKey> keys;
+    const auto appendInputKeys = [&keys](const auto& connections) {
+        for (const auto& pConnection : connections) {
+            if ((pConnection->getDirectionOption() &
+                        ControlParameterWidgetConnection::DIR_FROM_WIDGET) &&
+                    !keys.contains(pConnection->getKey())) {
+                keys.append(pConnection->getKey());
+            }
+        }
+    };
+    appendInputKeys(m_connections);
+    appendInputKeys(m_leftConnections);
+    appendInputKeys(m_rightConnections);
+    return keys;
+}
+
 double WBaseWidget::getControlParameter() const {
     if (!m_connections.empty()) {
         return m_connections.at(0)->getControlParameter();

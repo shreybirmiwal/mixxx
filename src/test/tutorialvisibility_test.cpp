@@ -6,8 +6,32 @@
 #include <QStringList>
 #include <QTemporaryDir>
 #include <QWidget>
+#include <memory>
+
+#include "control/controlobject.h"
+#include "widget/controlwidgetconnection.h"
+#include "widget/wbasewidget.h"
 
 namespace {
+
+class TutorialControlWidget final : public QWidget, public WBaseWidget {
+  public:
+    explicit TutorialControlWidget(QWidget* pParent)
+            : QWidget(pParent),
+              WBaseWidget(this) {
+        setProperty("mixxxSkinWidgetType", QStringLiteral("TestInput"));
+    }
+
+    void connectTo(const ConfigKey& key,
+            ControlParameterWidgetConnection::DirectionOption direction) {
+        addConnection(std::make_unique<ControlParameterWidgetConnection>(this,
+                              key,
+                              nullptr,
+                              direction,
+                              ControlParameterWidgetConnection::EMIT_NEVER),
+                ConnectionSide::None);
+    }
+};
 
 QString writeProfiles(QTemporaryDir* pDirectory) {
     const QString path = pDirectory->filePath(QStringLiteral("profiles.json"));
@@ -151,4 +175,39 @@ TEST(TutorialVisibilityTest, AdminCanBlankWorkspaceAndRestoreOneBranch) {
     controller.setWidgetTreeVisible(&deck1, true);
     EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&deck1));
     EXPECT_TRUE(controller.isWidgetExplicitlyVisible(&play1));
+}
+
+TEST(TutorialVisibilityTest, LocksOnlyWhenEveryActiveInputEditorIsHidden) {
+    const ConfigKey key(QStringLiteral("[TutorialVisibilityTest]"),
+            QStringLiteral("sharedInput"));
+    ControlObject control(key, true, false, false, 0.25);
+    QWidget skin;
+    TutorialControlWidget editor1(&skin);
+    TutorialControlWidget editor2(&skin);
+    TutorialControlWidget displayOnly(&skin);
+    editor1.connectTo(key,
+            ControlParameterWidgetConnection::DIR_FROM_AND_TO_WIDGET);
+    editor2.connectTo(key,
+            ControlParameterWidgetConnection::DIR_FROM_WIDGET);
+    displayOnly.connectTo(key,
+            ControlParameterWidgetConnection::DIR_TO_WIDGET);
+
+    mixxx::tutorial::VisibilityController controller(&skin);
+    control.set(0.8);
+    controller.setWidgetVisible(&editor1, false);
+    EXPECT_FALSE(control.isFrozenAtDefault());
+    EXPECT_DOUBLE_EQ(control.get(), 0.8);
+
+    controller.setWidgetVisible(&displayOnly, false);
+    EXPECT_FALSE(control.isFrozenAtDefault());
+    controller.setWidgetVisible(&editor2, false);
+    EXPECT_TRUE(control.isFrozenAtDefault());
+    EXPECT_DOUBLE_EQ(control.get(), 0.25);
+    control.forceSet(0.9);
+    EXPECT_DOUBLE_EQ(control.get(), 0.25);
+
+    controller.setWidgetVisible(&editor1, true);
+    EXPECT_FALSE(control.isFrozenAtDefault());
+    control.set(0.6);
+    EXPECT_DOUBLE_EQ(control.get(), 0.6);
 }
