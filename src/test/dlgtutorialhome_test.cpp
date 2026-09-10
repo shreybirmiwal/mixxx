@@ -31,7 +31,16 @@ TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
     EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("updatesButton")), nullptr);
     EXPECT_NE(home.findChild<QPushButton*>(QStringLiteral("freePlayButton")), nullptr);
     EXPECT_EQ(childrenWithProperty<QToolButton>(&home, "sectionHeader").size(), 3);
-    EXPECT_EQ(childrenWithProperty<QPushButton>(&home, "tutorialCard").size(), 10);
+    const auto tutorials =
+            childrenWithProperty<QPushButton>(&home, "tutorialCard");
+    EXPECT_EQ(tutorials.size(), 12);
+    QStringList tutorialIds;
+    for (QPushButton* pTutorial : tutorials) {
+        tutorialIds.append(pTutorial->property("tutorialId").toString());
+    }
+    EXPECT_TRUE(tutorialIds.contains(QStringLiteral("level-zero")));
+    EXPECT_TRUE(tutorialIds.contains(QStringLiteral("bass-eq")));
+    EXPECT_TRUE(tutorialIds.contains(QStringLiteral("looping")));
 }
 
 TEST(TutorialHomePageTest, SectionHeadersToggleTheirContent) {

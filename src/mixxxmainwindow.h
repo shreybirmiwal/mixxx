@@ -19,6 +19,7 @@ class LaunchImage;
 class QLabel;
 class QPushButton;
 class TutorialHomePage;
+class TutorialFocusOverlay;
 class QToolBar;
 class VisualsManager;
 class WMainMenuBar;
@@ -126,8 +127,9 @@ class MixxxMainWindow : public QMainWindow {
     void tryParseAndSetDefaultStyleSheet();
 
     bool confirmExit();
-    void showLevelZeroGuideStep(int step);
-    QWidget* findLevelZeroGuideTarget(const QString& objectName = {},
+    void loadTutorialDemoTracks(const QString& tutorialId);
+    void showTutorialGuideStep(int step);
+    QWidget* findTutorialGuideTarget(const QString& objectName = {},
             const QString& within = {},
             const QString& tooltipId = {},
             const QString& controlKey = {},
@@ -151,10 +153,11 @@ class MixxxMainWindow : public QMainWindow {
     parented_ptr<QLabel> m_pTutorialGuideLabel;
     parented_ptr<QPushButton> m_pTutorialGuidePrevious;
     parented_ptr<QPushButton> m_pTutorialGuideNext;
+    QPointer<TutorialFocusOverlay> m_pTutorialFocusOverlay;
     parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;
     std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
     QString m_activeTutorialId;
-    int m_levelZeroGuideStep{0};
+    int m_tutorialGuideStep{0};
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__
     Qt::WindowStates m_prevState;

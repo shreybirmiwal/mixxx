@@ -42,8 +42,11 @@ QString writeProfiles(QTemporaryDir* pDirectory) {
     file.write(R"({
         "profiles": {
             "focused": {
+                "controlStates": [
+                    { "controlKey": "[TutorialVisibilityTest],layout", "value": 1 }
+                ],
                 "hiddenWidgets": [
-                    "ClockWidget",
+                    { "objectName": "ClockWidget", "retainSpace": false },
                     { "within": "Deck1", "objectName": "PlayDeck" }
                 ],
                 "widgetStates": [
@@ -113,7 +116,7 @@ TEST(TutorialVisibilityTest, HidesMatchesWithinScopeAndRestoresState) {
     EXPECT_TRUE(clock.isHidden());
     EXPECT_TRUE(play1.isHidden());
     EXPECT_EQ(play2.isHidden(), play2WasHidden);
-    EXPECT_TRUE(clock.sizePolicy().retainSizeWhenHidden());
+    EXPECT_FALSE(clock.sizePolicy().retainSizeWhenHidden());
     EXPECT_TRUE(play1.sizePolicy().retainSizeWhenHidden());
     EXPECT_TRUE(rating.isHidden());
     EXPECT_TRUE(rate.isHidden());
@@ -124,6 +127,28 @@ TEST(TutorialVisibilityTest, HidesMatchesWithinScopeAndRestoresState) {
     EXPECT_EQ(play2.isHidden(), play2WasHidden);
     EXPECT_FALSE(clock.sizePolicy().retainSizeWhenHidden());
     EXPECT_FALSE(play1.sizePolicy().retainSizeWhenHidden());
+}
+
+TEST(TutorialVisibilityTest, ForcesLessonLayoutAndRestoresPreviousValue) {
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const QString path = writeProfiles(&directory);
+    ASSERT_FALSE(path.isEmpty());
+
+    const ConfigKey key(QStringLiteral("[TutorialVisibilityTest]"),
+            QStringLiteral("layout"));
+    ControlObject layoutControl(key, true, false, false, 0.0);
+    layoutControl.setAndConfirm(0.4);
+    QWidget skin;
+
+    mixxx::tutorial::VisibilityController controller(&skin);
+    QString error;
+    ASSERT_TRUE(controller.applyProfile(path, QStringLiteral("focused"), &error));
+    EXPECT_TRUE(error.isEmpty());
+    EXPECT_DOUBLE_EQ(layoutControl.get(), 1.0);
+
+    controller.restore();
+    EXPECT_DOUBLE_EQ(layoutControl.get(), 0.4);
 }
 
 TEST(TutorialVisibilityTest, ReportsMissingProfile) {

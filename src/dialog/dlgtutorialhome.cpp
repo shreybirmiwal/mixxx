@@ -223,11 +223,13 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
                     {QStringLiteral("crossfader"),
                      tr("Crossfader  —  Blend smoothly between two decks")},
                     {QStringLiteral("bass-eq"),
-                            tr("Bass & EQ  —  Shape lows, mids, and highs")},
+                            tr("EQ & Filter Knobs  —  Hear lows, mids, highs, and sweeps")},
                     {QStringLiteral("beatmatching"),
                             tr("Beatmatching  —  Align tempo and phase")},
                     {QStringLiteral("cueing"),
-                            tr("Cueing  —  Prepare the next track in headphones")}});
+                            tr("Cueing  —  Prepare the next track in headphones")},
+                    {QStringLiteral("looping"),
+                            tr("Looping  —  Repeat beats and control a musical phrase")}});
     addTutorialSection(pTutorialLayout,
             tr("Wordplay"),
             tr("Build transitions around lyrics and memorable phrases."),

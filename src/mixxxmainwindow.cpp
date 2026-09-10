@@ -1,18 +1,25 @@
 #include "mixxxmainwindow.h"
 
+#include <algorithm>
+#include <utility>
+
 #include <QAction>
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDebug>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QFontMetrics>
 #include <QLabel>
 #include <QOpenGLContext>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPaintEvent>
 #include <QPushButton>
 #include <QScreen>
 #include <QTimer>
 #include <QToolBar>
-#include <QToolTip>
 #include <QUrl>
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -51,6 +58,7 @@
 #include "library/export/libraryexporter.h"
 #endif
 #include "library/library_prefs.h"
+#include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
@@ -83,8 +91,275 @@
 namespace {
 const ConfigKey kHideMenuBarConfigKey = ConfigKey("[Config]", "hide_menubar");
 const ConfigKey kMenuBarHintConfigKey = ConfigKey("[Config]", "show_menubar_hint");
-constexpr int kLevelZeroGuideStepCount = 8;
+
+struct TutorialGuideStep {
+    TutorialGuideStep(QString title,
+            QString detail,
+            QString objectName = {},
+            QString within = {},
+            QString tooltipId = {},
+            QString controlKey = {},
+            QString widgetType = {})
+            : title(std::move(title)),
+              detail(std::move(detail)),
+              objectName(std::move(objectName)),
+              within(std::move(within)),
+              tooltipId(std::move(tooltipId)),
+              controlKey(std::move(controlKey)),
+              widgetType(std::move(widgetType)) {
+    }
+
+    QString title;
+    QString detail;
+    QString objectName;
+    QString within;
+    QString tooltipId;
+    QString controlKey;
+    QString widgetType;
+};
+
+QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
+    if (tutorialId == QStringLiteral("level-zero")) {
+        return {
+                {QObject::tr("Pick two songs"),
+                        QObject::tr("This is your music library. Pick any song and drag it onto the left deck. Then drag a different song onto the right deck."),
+                        QStringLiteral("LibraryContainer")},
+                {QObject::tr("Load the left deck"),
+                        QObject::tr("Drag a song from the library and drop it directly into this glowing title box. The example song will be replaced and its waveform will appear above."),
+                        QStringLiteral("TitleText"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Load the right deck"),
+                        QObject::tr("Now drag a different song into this right title box. A DJ uses two decks so the next song can be prepared while the first one plays."),
+                        QStringLiteral("TitleText"),
+                        QStringLiteral("Deck2_Src")},
+                {QObject::tr("Read the waveforms"),
+                        QObject::tr("The colored shapes are pictures of the sound. The music moves through the center line, helping you see loud sections and upcoming changes."),
+                        QStringLiteral("WaveformsContainer")},
+                {QObject::tr("Play and pause"),
+                        QObject::tr("Press this button to start the left song. Press it again to pause. Try it now, then continue."),
+                        QStringLiteral("PlayDeck"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Adjust the tempo"),
+                        QObject::tr("Drag this fader gently. Moving away from the center changes how fast the song plays. Return it to the center when you are done."),
+                        QStringLiteral("RateSlider"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Set a deck's volume"),
+                        QObject::tr("This vertical fader controls how loudly the left deck reaches the audience. Up is louder; down is quieter."),
+                        {},
+                        {},
+                        QStringLiteral("channel_volume"),
+                        QStringLiteral("[Channel1],volume")},
+                {QObject::tr("Blend with the crossfader"),
+                        QObject::tr("Left plays only the left deck, right plays only the right deck, and the center blends both. Move it slowly from one side to the other to make your first transition."),
+                        {},
+                        {},
+                        QStringLiteral("crossfader")},
+        };
+    }
+    if (tutorialId == QStringLiteral("bass-eq")) {
+        return {
+                {QObject::tr("Load a song"),
+                        QObject::tr("Choose a song you know well and drag it onto the left deck. Hearing a familiar song makes the tone controls easier to understand."),
+                        QStringLiteral("LibraryContainer")},
+                {QObject::tr("Start the music"),
+                        QObject::tr("Press Play. Leave the song running while you test each knob so your ears can hear the change immediately."),
+                        QStringLiteral("PlayDeck"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("How to move a knob"),
+                        QObject::tr("Click this HIGH knob and drag up or down. The center position is neutral: it neither adds nor removes that part of the sound."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("filterHigh")},
+                {QObject::tr("High frequencies"),
+                        QObject::tr("HIGH controls bright sounds such as hi-hats, cymbals, and crisp vocals. Turn it down and notice the track become darker; then return it to center."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("filterHigh")},
+                {QObject::tr("Mid frequencies"),
+                        QObject::tr("MID contains much of the vocal, melody, and body of a track. Small changes are powerful. Turn it down, listen, then return it to center."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("filterMid")},
+                {QObject::tr("Low frequencies"),
+                        QObject::tr("LOW controls the kick drum and bass. DJs often lower the outgoing track's bass so two basslines do not clash. Try it, then reset to center."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("filterLow")},
+                {QObject::tr("The filter knob"),
+                        QObject::tr("Turn this filter clockwise for a high-pass sweep: low sounds disappear first. Turn it counterclockwise for a low-pass sweep: high sounds disappear first. Center is neutral."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("QuickEffectRack_super1")},
+                {QObject::tr("Practice a clean swap"),
+                        QObject::tr("With both songs playing, lower LOW on one deck while raising LOW on the other. Make small, slow movements and return every knob to center afterward."),
+                        QStringLiteral("MixerDecks")},
+        };
+    }
+    if (tutorialId == QStringLiteral("looping")) {
+        return {
+                {QObject::tr("Load one song"),
+                        QObject::tr("Pick a song with a clear drum beat and drag it onto the left deck."),
+                        QStringLiteral("LibraryContainer")},
+                {QObject::tr("Start the song"),
+                        QObject::tr("Press Play and listen for the steady count: one, two, three, four."),
+                        QStringLiteral("PlayDeck"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Choose the loop length"),
+                        QObject::tr("This number is the loop length in beats. Start with 4 beats—one complete bar in most dance music."),
+                        {},
+                        QStringLiteral("Deck1_Src"),
+                        QStringLiteral("beatloop_size")},
+                {QObject::tr("Turn the loop on"),
+                        QObject::tr("Press this loop button near the start of a musical phrase. Mixxx repeats the selected number of beats without stopping the music."),
+                        QStringLiteral("LoopActivate"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Make the loop shorter"),
+                        QObject::tr("Reduce the beat count while the loop is active. A shorter loop repeats faster and builds tension. Do it gradually so the change sounds intentional."),
+                        {},
+                        QStringLiteral("Deck1_Src"),
+                        QStringLiteral("beatloop_size")},
+                {QObject::tr("Make the loop longer"),
+                        QObject::tr("Increase the beat count again. Longer loops preserve more of the musical phrase and usually sound calmer."),
+                        {},
+                        QStringLiteral("Deck1_Src"),
+                        QStringLiteral("beatloop_size")},
+                {QObject::tr("Exit the loop"),
+                        QObject::tr("Press the lit loop button again. Playback continues forward from the current position—your track does not restart."),
+                        QStringLiteral("LoopActivate"),
+                        QStringLiteral("Deck1_Src")},
+                {QObject::tr("Bring a loop back"),
+                        QObject::tr("RELOOP returns to the most recent loop after you exit it. Use it when you need more time to prepare the next song."),
+                        QStringLiteral("Reloop"),
+                        QStringLiteral("Deck1_Src")},
+        };
+    }
+    return {};
+}
 } // namespace
+
+class TutorialFocusOverlay final : public QWidget {
+  public:
+    explicit TutorialFocusOverlay(QWidget* pParent)
+            : QWidget(pParent) {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setFocusPolicy(Qt::NoFocus);
+        pParent->installEventFilter(this);
+        setGeometry(pParent->rect());
+    }
+
+    void setTarget(QWidget* pTarget,
+            const QString& title,
+            const QString& detail,
+            int step,
+            int stepCount) {
+        m_pTarget = pTarget;
+        m_title = title;
+        m_detail = detail;
+        m_step = step;
+        m_stepCount = stepCount;
+        setGeometry(parentWidget()->rect());
+        show();
+        raise();
+        update();
+    }
+
+  protected:
+    bool eventFilter(QObject* pObject, QEvent* pEvent) override {
+        if (pObject == parentWidget() && pEvent->type() == QEvent::Resize) {
+            setGeometry(parentWidget()->rect());
+            update();
+        }
+        return QWidget::eventFilter(pObject, pEvent);
+    }
+
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        QRect focusRect;
+        if (m_pTarget) {
+            const QPoint topLeft = mapFromGlobal(m_pTarget->mapToGlobal(QPoint(0, 0)));
+            focusRect = QRect(topLeft, m_pTarget->size())
+                                .adjusted(-9, -9, 9, 9)
+                                .intersected(rect().adjusted(6, 6, -6, -6));
+        }
+        if (focusRect.isEmpty()) {
+            focusRect = QRect(width() / 2 - 50, height() / 2 - 30, 100, 60);
+        }
+
+        QPainterPath shade;
+        shade.setFillRule(Qt::OddEvenFill);
+        shade.addRect(rect());
+        shade.addRoundedRect(focusRect, 10, 10);
+        painter.fillPath(shade, QColor(2, 4, 9, 188));
+
+        painter.setPen(QPen(QColor(167, 139, 250), 3));
+        painter.drawRoundedRect(focusRect, 10, 10);
+
+        const int bubbleWidth = qMin(430, qMax(280, width() - 32));
+        QFont titleFont = font();
+        titleFont.setBold(true);
+        titleFont.setPointSize(titleFont.pointSize() + 3);
+        QFont detailFont = font();
+        detailFont.setPointSize(detailFont.pointSize() + 1);
+        const QFontMetrics titleMetrics(titleFont);
+        const QFontMetrics detailMetrics(detailFont);
+        const QRect detailBounds = detailMetrics.boundingRect(
+                QRect(0, 0, bubbleWidth - 36, 1000),
+                Qt::TextWordWrap,
+                m_detail);
+        const int bubbleHeight =
+                24 + titleMetrics.height() + 8 + detailBounds.height() + 20;
+
+        int bubbleX = focusRect.center().x() - bubbleWidth / 2;
+        int bubbleY = focusRect.bottom() + 20;
+        if (bubbleY + bubbleHeight > height() - 16) {
+            bubbleY = focusRect.top() - bubbleHeight - 20;
+        }
+        if (bubbleY < 16) {
+            bubbleY = qBound(16,
+                    focusRect.center().y() - bubbleHeight / 2,
+                    qMax(16, height() - bubbleHeight - 16));
+            bubbleX = focusRect.right() + 20;
+            if (bubbleX + bubbleWidth > width() - 16) {
+                bubbleX = focusRect.left() - bubbleWidth - 20;
+            }
+        }
+        bubbleX = qBound(16, bubbleX, qMax(16, width() - bubbleWidth - 16));
+        const QRect bubbleRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
+
+        painter.setPen(QPen(QColor(167, 139, 250), 2));
+        painter.drawLine(bubbleRect.center(), focusRect.center());
+        painter.setBrush(QColor(20, 16, 36, 248));
+        painter.drawRoundedRect(bubbleRect, 14, 14);
+
+        const QRect content = bubbleRect.adjusted(18, 14, -18, -14);
+        painter.setFont(titleFont);
+        painter.setPen(QColor(255, 255, 255));
+        painter.drawText(content.left(),
+                content.top() + titleMetrics.ascent(),
+                QStringLiteral("%1/%2  %3")
+                        .arg(m_step + 1)
+                        .arg(m_stepCount)
+                        .arg(m_title));
+        painter.setFont(detailFont);
+        painter.setPen(QColor(224, 219, 243));
+        painter.drawText(QRect(content.left(),
+                                 content.top() + titleMetrics.height() + 8,
+                                 content.width(),
+                                 detailBounds.height()),
+                Qt::TextWordWrap,
+                m_detail);
+    }
+
+  private:
+    QPointer<QWidget> m_pTarget;
+    QString m_title;
+    QString m_detail;
+    int m_step{0};
+    int m_stepCount{0};
+};
 
 MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServices)
         : m_pCoreServices(pCoreServices),
@@ -176,13 +451,12 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
     m_pTutorialGuidePrevious->hide();
     m_pTutorialGuideNext->hide();
     connect(m_pTutorialGuidePrevious.get(), &QPushButton::clicked, this, [this] {
-        showLevelZeroGuideStep(m_levelZeroGuideStep - 1);
+        showTutorialGuideStep(m_tutorialGuideStep - 1);
     });
     connect(m_pTutorialGuideNext.get(), &QPushButton::clicked, this, [this] {
-        showLevelZeroGuideStep(
-                m_levelZeroGuideStep == kLevelZeroGuideStepCount - 1
-                        ? 0
-                        : m_levelZeroGuideStep + 1);
+        const int stepCount = tutorialGuideSteps(m_activeTutorialId).size();
+        showTutorialGuideStep(
+                m_tutorialGuideStep == stepCount - 1 ? 0 : m_tutorialGuideStep + 1);
     });
     addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
     m_pTutorialToolBar->hide();
@@ -657,7 +931,9 @@ void MixxxMainWindow::showTutorialHome() {
         m_pTutorialVisibility.reset();
     }
     m_activeTutorialId.clear();
-    QToolTip::hideText();
+    if (m_pTutorialFocusOverlay) {
+        m_pTutorialFocusOverlay->hide();
+    }
     m_pTutorialGuideLabel->hide();
     m_pTutorialGuidePrevious->hide();
     m_pTutorialGuideNext->hide();
@@ -720,23 +996,28 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
                                 m_pTutorialVisibilityPanel->width()),
                 available.top() + 40);
     }
-    const bool isLevelZero = tutorialId == QStringLiteral("level-zero");
-    m_pMenuBar->setEnabled(!isLevelZero);
+    const bool hasGuide = !tutorialGuideSteps(tutorialId).isEmpty();
+    m_pMenuBar->setEnabled(!hasGuide);
     for (QAction* pAction : m_pMenuBar->actions()) {
-        pAction->setVisible(!isLevelZero);
+        pAction->setVisible(!hasGuide);
     }
-    m_pMenuBar->setVisible(!isLevelZero);
-    m_pTutorialVisibilityPanel->setVisible(!isLevelZero);
-    if (!isLevelZero) {
+    m_pMenuBar->setVisible(!hasGuide);
+    m_pTutorialVisibilityPanel->setVisible(!hasGuide);
+    if (!hasGuide) {
         m_pTutorialVisibilityPanel->raise();
     }
     m_pTutorialToolBar->show();
-    m_pTutorialGuideLabel->setVisible(isLevelZero);
-    m_pTutorialGuidePrevious->setVisible(isLevelZero);
-    m_pTutorialGuideNext->setVisible(isLevelZero);
-    if (isLevelZero) {
-        QTimer::singleShot(150, this, [this] {
-            showLevelZeroGuideStep(0);
+    m_pTutorialGuideLabel->setVisible(hasGuide);
+    m_pTutorialGuidePrevious->setVisible(hasGuide);
+    m_pTutorialGuideNext->setVisible(hasGuide);
+    if (hasGuide) {
+        if (!m_pTutorialFocusOverlay ||
+                m_pTutorialFocusOverlay->parentWidget() != m_pCentralWidget) {
+            m_pTutorialFocusOverlay = new TutorialFocusOverlay(m_pCentralWidget);
+        }
+        loadTutorialDemoTracks(tutorialId);
+        QTimer::singleShot(600, this, [this] {
+            showTutorialGuideStep(0);
         });
     }
 
@@ -746,7 +1027,58 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     }
 }
 
-QWidget* MixxxMainWindow::findLevelZeroGuideTarget(const QString& objectName,
+void MixxxMainWindow::loadTutorialDemoTracks(const QString& tutorialId) {
+    if (tutorialId != QStringLiteral("level-zero") &&
+            tutorialId != QStringLiteral("bass-eq") &&
+            tutorialId != QStringLiteral("looping")) {
+        return;
+    }
+    const auto pTrackCollectionManager =
+            m_pCoreServices->getTrackCollectionManager();
+    const auto pPlayerManager = m_pCoreServices->getPlayerManager();
+    if (!pTrackCollectionManager || !pPlayerManager) {
+        return;
+    }
+
+    QStringList locations = pTrackCollectionManager->internalCollection()
+                                    ->getTrackDAO()
+                                    .getAllExistingTrackLocations()
+                                    .values();
+    locations.removeIf([](const QString& location) {
+        return !QFileInfo::exists(location);
+    });
+    const auto tutorialTrackScore = [](const QString& location) {
+        const QString lower = location.toLower();
+        int score = 0;
+        if (lower.contains(QStringLiteral("serato demo tracks"))) {
+            score += 100;
+        }
+        if (lower.contains(QStringLiteral("starter pack"))) {
+            score += 50;
+        }
+        if (lower.contains(QStringLiteral("house track"))) {
+            score += 25;
+        }
+        return score;
+    };
+    std::sort(locations.begin(),
+            locations.end(),
+            [&](const QString& left, const QString& right) {
+                const int leftScore = tutorialTrackScore(left);
+                const int rightScore = tutorialTrackScore(right);
+                return leftScore == rightScore ? left < right : leftScore > rightScore;
+            });
+    if (locations.isEmpty()) {
+        return;
+    }
+
+    pPlayerManager->slotLoadToDeck(locations.at(0), 1);
+    if (tutorialId == QStringLiteral("level-zero") && locations.size() > 1) {
+        pPlayerManager->slotLoadToDeck(locations.at(1), 2);
+    }
+}
+
+QWidget* MixxxMainWindow::findTutorialGuideTarget(const QString& objectName,
         const QString& within,
         const QString& tooltipId,
         const QString& controlKey,
@@ -791,85 +1123,36 @@ QWidget* MixxxMainWindow::findLevelZeroGuideTarget(const QString& objectName,
     return nullptr;
 }
 
-void MixxxMainWindow::showLevelZeroGuideStep(int step) {
-    if (m_activeTutorialId != QStringLiteral("level-zero") ||
-            !m_pTutorialGuideLabel->isVisible()) {
+void MixxxMainWindow::showTutorialGuideStep(int step) {
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
+    if (steps.isEmpty() || !m_pTutorialGuideLabel->isVisible()) {
         return;
     }
-    m_levelZeroGuideStep = qBound(0, step, kLevelZeroGuideStepCount - 1);
-
-    QString title;
-    QString detail;
-    QWidget* pTarget = nullptr;
-    switch (m_levelZeroGuideStep) {
-    case 0:
-        title = tr("Pick two songs");
-        detail = tr("Choose music here. Drag one song to the left deck and another to the right deck.");
-        pTarget = findLevelZeroGuideTarget(
-                QStringLiteral("LibraryContainer"));
-        break;
-    case 1:
-        title = tr("Load the left deck");
-        detail = tr("Drop your first song onto this left deck.");
-        pTarget = findLevelZeroGuideTarget(QStringLiteral("Deck1_Src"));
-        break;
-    case 2:
-        title = tr("Load the right deck");
-        detail = tr("Drop your second song onto this right deck.");
-        pTarget = findLevelZeroGuideTarget(QStringLiteral("Deck2_Src"));
-        break;
-    case 3:
-        title = tr("Read the waveforms");
-        detail = tr("These shapes show the music moving through both decks.");
-        pTarget = findLevelZeroGuideTarget(
-                QStringLiteral("WaveformsContainer"));
-        break;
-    case 4:
-        title = tr("Play and pause");
-        detail = tr("Use this button to start or pause the left track.");
-        pTarget = findLevelZeroGuideTarget(
-                QStringLiteral("PlayDeck"), QStringLiteral("Deck1_Src"));
-        break;
-    case 5:
-        title = tr("Match the tempo");
-        detail = tr("Move this tempo fader to speed the left track up or slow it down.");
-        pTarget = findLevelZeroGuideTarget(
-                QStringLiteral("RateSlider"), QStringLiteral("Deck1_Src"));
-        break;
-    case 6:
-        title = tr("Set the volume");
-        detail = tr("This fader controls the left deck's volume.");
-        pTarget = findLevelZeroGuideTarget({},
-                {},
-                QStringLiteral("channel_volume"),
-                QStringLiteral("[Channel1],volume"));
-        break;
-    case 7:
-        title = tr("Blend with the crossfader");
-        detail = tr("Move this between the left and right decks. You are ready for your first mix.");
-        pTarget = findLevelZeroGuideTarget(
-                {}, {}, QStringLiteral("crossfader"));
-        break;
-    }
+    m_tutorialGuideStep = qBound(0, step, steps.size() - 1);
+    const TutorialGuideStep& guideStep = steps.at(m_tutorialGuideStep);
+    QWidget* pTarget = findTutorialGuideTarget(guideStep.objectName,
+            guideStep.within,
+            guideStep.tooltipId,
+            guideStep.controlKey,
+            guideStep.widgetType);
 
     m_pTutorialGuideLabel->setText(
-            tr("Level 0  ·  %1 of %2  ·  %3 — %4")
-                    .arg(m_levelZeroGuideStep + 1)
-                    .arg(kLevelZeroGuideStepCount)
-                    .arg(title, detail));
-    m_pTutorialGuidePrevious->setEnabled(m_levelZeroGuideStep > 0);
+            tr("%1 of %2  ·  %3")
+                    .arg(m_tutorialGuideStep + 1)
+                    .arg(steps.size())
+                    .arg(guideStep.title));
+    m_pTutorialGuidePrevious->setEnabled(m_tutorialGuideStep > 0);
     m_pTutorialGuideNext->setText(
-            m_levelZeroGuideStep == kLevelZeroGuideStepCount - 1
+            m_tutorialGuideStep == steps.size() - 1
                     ? tr("Restart")
                     : tr("Next"));
 
-    QToolTip::hideText();
-    if (pTarget) {
-        QToolTip::showText(pTarget->mapToGlobal(pTarget->rect().center()),
-                QStringLiteral("<b>%1</b><br>%2").arg(title, detail),
-                pTarget,
-                QRect(),
-                15000);
+    if (m_pTutorialFocusOverlay) {
+        m_pTutorialFocusOverlay->setTarget(pTarget,
+                guideStep.title,
+                guideStep.detail,
+                m_tutorialGuideStep,
+                steps.size());
     }
 }
 
