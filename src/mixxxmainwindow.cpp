@@ -63,6 +63,7 @@
 #include "library/library_prefs.h"
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
+#include "mixer/basetrackplayer.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
 #include "recording/recordingmanager.h"
@@ -1387,12 +1388,9 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
 }
 
 void MixxxMainWindow::loadTutorialDemoTracks(const QString& tutorialId) {
-    if (tutorialId != QStringLiteral("level-zero") &&
-            tutorialId != QStringLiteral("crossfader") &&
-            tutorialId != QStringLiteral("bass-eq") &&
+    if (tutorialId != QStringLiteral("crossfader") &&
             tutorialId != QStringLiteral("cueing") &&
-            tutorialId != QStringLiteral("beatmatching") &&
-            tutorialId != QStringLiteral("looping")) {
+            tutorialId != QStringLiteral("beatmatching")) {
         return;
     }
     const auto pTrackCollectionManager =
@@ -1435,9 +1433,7 @@ void MixxxMainWindow::loadTutorialDemoTracks(const QString& tutorialId) {
     }
 
     pPlayerManager->slotLoadToDeck(locations.at(0), 1);
-    if ((tutorialId == QStringLiteral("level-zero") ||
-                tutorialId == QStringLiteral("crossfader") ||
-                tutorialId == QStringLiteral("cueing") ||
+    if ((tutorialId == QStringLiteral("crossfader") ||
                 tutorialId == QStringLiteral("beatmatching")) &&
             locations.size() > 1) {
         pPlayerManager->slotLoadToDeck(locations.at(1), 2);
@@ -1742,8 +1738,61 @@ void MixxxMainWindow::resetTutorialSession() {
     }
     m_pTutorialActionControl.reset();
     m_tutorialStepCompleted = false;
-    if (!m_activeTutorialId.isEmpty()) {
-        pauseTutorialDecks();
+
+    const auto pPlayerManager = m_pCoreServices->getPlayerManager();
+    if (!pPlayerManager) {
+        return;
+    }
+
+    const auto triggerControl = [](const QString& group, const QString& item) {
+        const ConfigKey key(group, item);
+        ControlObject::set(key, 1.0);
+        ControlObject::set(key, 0.0);
+    };
+    const auto ejectLoadedTrack = [&](const QString& group) {
+        BaseTrackPlayer* pPlayer = pPlayerManager->getPlayer(group);
+        if (pPlayer && pPlayer->getLoadedTrack()) {
+            pPlayer->slotEjectTrack(1.0);
+        }
+    };
+    const auto resetPlayer = [&](const QString& group) {
+        ControlObject::set(ConfigKey(group, QStringLiteral("play")), 0.0);
+        ControlObject::set(ConfigKey(group, QStringLiteral("pfl")), 0.0);
+        ControlObject::set(
+                ConfigKey(group, QStringLiteral("sync_enabled")), 0.0);
+        triggerControl(group, QStringLiteral("rate_set_default"));
+        triggerControl(group, QStringLiteral("volume_set_default"));
+        triggerControl(group, QStringLiteral("pregain_set_default"));
+        ejectLoadedTrack(group);
+    };
+
+    for (int deck = 0; deck < pPlayerManager->numberOfDecks(); ++deck) {
+        const QString group = PlayerManager::groupForDeck(deck);
+        resetPlayer(group);
+        triggerControl(QStringLiteral("[EqualizerRack1_%1]").arg(group),
+                QStringLiteral("super1_set_default"));
+        triggerControl(QStringLiteral("[QuickEffectRack1_%1]").arg(group),
+                QStringLiteral("super1_set_default"));
+    }
+    for (int sampler = 0;
+            sampler < pPlayerManager->numberOfSamplers();
+            ++sampler) {
+        resetPlayer(PlayerManager::groupForSampler(sampler));
+    }
+    for (int preview = 0;
+            preview < pPlayerManager->numberOfPreviewDecks();
+            ++preview) {
+        const QString group = PlayerManager::groupForPreviewDeck(preview);
+        ControlObject::set(ConfigKey(group, QStringLiteral("play")), 0.0);
+        ejectLoadedTrack(group);
+    }
+    triggerControl(QStringLiteral("[Master]"),
+            QStringLiteral("crossfader_set_default"));
+    for (int unit = 1; unit <= 4; ++unit) {
+        ControlObject::set(
+                ConfigKey(QStringLiteral("[EffectRack1_EffectUnit%1]").arg(unit),
+                        QStringLiteral("enabled")),
+                1.0);
     }
 }
 
