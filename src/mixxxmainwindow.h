@@ -161,6 +161,7 @@ class MixxxMainWindow : public QMainWindow {
     parented_ptr<QToolBar> m_pTutorialToolBar;
     parented_ptr<QLabel> m_pTutorialGuideLabel;
     parented_ptr<QPushButton> m_pTutorialCheckNext;
+    QAction* m_pTutorialCheckNextAction{nullptr};
     parented_ptr<QTimer> m_pTutorialStepTimer;
     QPointer<TutorialFocusOverlay> m_pTutorialFocusOverlay;
     parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;

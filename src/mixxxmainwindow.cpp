@@ -731,8 +731,9 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             QStringLiteral("tutorialCheckNextButton"));
     m_pTutorialCheckNext->setAccessibleName(tr("Check tutorial step"));
     m_pTutorialCheckNext->setProperty("stepReady", false);
-    m_pTutorialToolBar->addWidget(m_pTutorialCheckNext);
-    m_pTutorialCheckNext->hide();
+    m_pTutorialCheckNextAction =
+            m_pTutorialToolBar->addWidget(m_pTutorialCheckNext);
+    m_pTutorialCheckNextAction->setVisible(false);
     connect(m_pTutorialCheckNext.get(), &QPushButton::clicked, this, [this] {
         const QList<TutorialGuideStep> steps =
                 tutorialGuideSteps(m_activeTutorialId);
@@ -1291,7 +1292,7 @@ void MixxxMainWindow::showTutorialHome() {
         m_pTutorialFocusOverlay->hide();
     }
     m_pTutorialGuideLabel->hide();
-    m_pTutorialCheckNext->hide();
+    m_pTutorialCheckNextAction->setVisible(false);
     m_pTutorialVisibilityPanel->hide();
     m_pTutorialToolBar->hide();
     m_pMenuBar->setEnabled(true);
@@ -1368,7 +1369,7 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     }
     m_pTutorialToolBar->show();
     m_pTutorialGuideLabel->setVisible(hasGuide);
-    m_pTutorialCheckNext->setVisible(hasGuide);
+    m_pTutorialCheckNextAction->setVisible(hasGuide);
     if (hasGuide) {
         if (!m_pTutorialFocusOverlay ||
                 m_pTutorialFocusOverlay->parentWidget() != m_pCentralWidget) {
@@ -1720,16 +1721,27 @@ void MixxxMainWindow::completeTutorialStep() {
 void MixxxMainWindow::finishTutorialSession() {
     m_pTutorialStepTimer->stop();
     m_pTutorialActionControl.reset();
-    pauseTutorialDecks();
 
-    const QString title = tr("Lesson complete  ✓");
-    const QString detail = tr("You completed every action yourself. Return to the menu when you are ready for the next skill.");
+    const QString title = tr("All done!  ✓");
+    const QString detail = tr("You finished the lesson. Keep practicing freely with this focused layout—your songs, controls, and settings will stay exactly as they are.");
     m_pTutorialGuideLabel->setText(title);
-    m_pTutorialCheckNext->setText(tr("Completed  ✓"));
-    m_pTutorialCheckNext->setEnabled(false);
+    m_pTutorialCheckNextAction->setVisible(false);
     if (m_pTutorialFocusOverlay) {
         m_pTutorialFocusOverlay->setResult(title, detail);
     }
+
+    const QString tutorialId = m_activeTutorialId;
+    QTimer::singleShot(2200, this, [this, tutorialId] {
+        if (m_activeTutorialId != tutorialId || !m_tutorialStepCompleted) {
+            return;
+        }
+        if (m_pTutorialFocusOverlay) {
+            m_pTutorialFocusOverlay->hide();
+        }
+        m_pTutorialGuideLabel->setText(
+                tr("FREE PLAY  ·  Lesson complete — practice with these controls"));
+        m_pTutorialGuideLabel->show();
+    });
 }
 
 void MixxxMainWindow::resetTutorialSession() {
