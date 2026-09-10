@@ -30,6 +30,12 @@ Every profile begins from the normal restored skin. A missing selector or
 `"visible": true` therefore leaves that item on. `"visible": false` turns it
 off for that lesson.
 
+Use `controlStates` for skin-level layout switches. Prefer these when hiding a
+whole optional column, because the skin can then reflow the remaining controls
+instead of retaining the hidden column's geometry. For example, focused mixer
+lessons set `[Skin],show_main_head_mixer` to `0` so the Main/Booth/Headphone
+sidecar is removed and the channel mixer stays centered.
+
 The older `hiddenWidgets` shorthand is also supported. A string hides every
 widget with that skin `ObjectName`:
 
