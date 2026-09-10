@@ -16,6 +16,8 @@ class DlgPreferences;
 class DlgKeywheel;
 class GuiTick;
 class LaunchImage;
+class QLabel;
+class QPushButton;
 class TutorialHomePage;
 class QToolBar;
 class VisualsManager;
@@ -124,6 +126,12 @@ class MixxxMainWindow : public QMainWindow {
     void tryParseAndSetDefaultStyleSheet();
 
     bool confirmExit();
+    void showLevelZeroGuideStep(int step);
+    QWidget* findLevelZeroGuideTarget(const QString& objectName = {},
+            const QString& within = {},
+            const QString& tooltipId = {},
+            const QString& controlKey = {},
+            const QString& widgetType = {}) const;
 #ifndef __APPLE__
     void alwaysHideMenuBarDlg();
 #endif
@@ -140,9 +148,13 @@ class MixxxMainWindow : public QMainWindow {
     QWidget* m_pCentralWidget;
     QPointer<TutorialHomePage> m_pTutorialHomePage;
     parented_ptr<QToolBar> m_pTutorialToolBar;
+    parented_ptr<QLabel> m_pTutorialGuideLabel;
+    parented_ptr<QPushButton> m_pTutorialGuidePrevious;
+    parented_ptr<QPushButton> m_pTutorialGuideNext;
     parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;
     std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
     QString m_activeTutorialId;
+    int m_levelZeroGuideStep{0};
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__
     Qt::WindowStates m_prevState;

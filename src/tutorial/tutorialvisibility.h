@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QList>
+#include <QHash>
 #include <QPointer>
 #include <QSet>
 #include <QSizePolicy>
@@ -18,6 +19,7 @@ struct WidgetSelector {
     QString tooltipId;
     QString controlKey;
     QString widgetType;
+    bool retainSpace{true};
 
     bool isValid() const {
         return !objectName.isEmpty() || !tooltipId.isEmpty() ||
@@ -66,6 +68,10 @@ class VisibilityController final {
     };
 
     bool matchesSelector(QWidget* pWidget, const WidgetSelector& selector) const;
+    bool applyForcedControlStates(const QString& filePath,
+            const QString& profileId,
+            QString* pError);
+    void restoreForcedControlStates();
     void hideMatchingWidgets(const WidgetSelector& selector);
     void applyHiddenState(QWidget* pWidget);
     void restoreAppliedStates();
@@ -77,7 +83,10 @@ class VisibilityController final {
     QWidget* m_pSkinRoot;
     QSet<QWidget*> m_initiallyVisibleWidgets;
     QSet<QWidget*> m_hiddenWidgets;
+    QSet<QWidget*> m_collapsedWidgets;
     QSet<ConfigKey> m_frozenControlKeys;
+    QHash<ConfigKey, double> m_forcedControlValues;
+    QHash<ConfigKey, double> m_previousControlValues;
     QList<WidgetState> m_widgetStates;
 };
 

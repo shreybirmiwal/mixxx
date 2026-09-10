@@ -47,6 +47,13 @@ bool VisibilityController::applyProfile(const QString& filePath,
     for (const WidgetSelector& selector : selectors) {
         hideMatchingWidgets(selector);
     }
+    if (!applyForcedControlStates(filePath, profileId, &error)) {
+        if (pError) {
+            *pError = error;
+        }
+        restore();
+        return false;
+    }
     refreshHiddenStates();
     return true;
 }
@@ -54,7 +61,80 @@ bool VisibilityController::applyProfile(const QString& filePath,
 void VisibilityController::restore() {
     restoreAppliedStates();
     releaseFrozenControls();
+    restoreForcedControlStates();
     m_hiddenWidgets.clear();
+    m_collapsedWidgets.clear();
+}
+
+bool VisibilityController::applyForcedControlStates(const QString& filePath,
+        const QString& profileId,
+        QString* pError) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (pError) {
+            *pError = QStringLiteral("Cannot open tutorial visibility profiles: %1")
+                              .arg(filePath);
+        }
+        return false;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        if (pError) {
+            *pError = QStringLiteral("Invalid tutorial visibility JSON: %1")
+                              .arg(parseError.errorString());
+        }
+        return false;
+    }
+    const QJsonObject profile = document.object()
+                                        .value(QStringLiteral("profiles"))
+                                        .toObject()
+                                        .value(profileId)
+                                        .toObject();
+    const QJsonArray controlStates =
+            profile.value(QStringLiteral("controlStates")).toArray();
+    for (const QJsonValue& value : controlStates) {
+        if (!value.isObject()) {
+            continue;
+        }
+        const QJsonObject object = value.toObject();
+        const ConfigKey key = ConfigKey::parseCommaSeparated(
+                object.value(QStringLiteral("controlKey")).toString());
+        if (key.group.isEmpty() || key.item.isEmpty() ||
+                !object.value(QStringLiteral("value")).isDouble() ||
+                !ControlObject::exists(key)) {
+            continue;
+        }
+        ControlObject* pControl =
+                ControlObject::getControl(key, ControlFlag::NoWarnIfMissing);
+        if (!pControl) {
+            continue;
+        }
+        if (!m_previousControlValues.contains(key)) {
+            m_previousControlValues.insert(key, pControl->get());
+        }
+        const double forcedValue =
+                object.value(QStringLiteral("value")).toDouble();
+        m_forcedControlValues.insert(key, forcedValue);
+        pControl->setFrozenAtDefault(false);
+        pControl->setAndConfirm(forcedValue);
+    }
+    return true;
+}
+
+void VisibilityController::restoreForcedControlStates() {
+    for (auto it = m_previousControlValues.constBegin();
+            it != m_previousControlValues.constEnd();
+            ++it) {
+        ControlObject* pControl =
+                ControlObject::getControl(it.key(), ControlFlag::NoWarnIfMissing);
+        if (pControl) {
+            pControl->setFrozenAtDefault(false);
+            pControl->setAndConfirm(it.value());
+        }
+    }
+    m_previousControlValues.clear();
+    m_forcedControlValues.clear();
 }
 
 void VisibilityController::restoreAppliedStates() {
@@ -106,6 +186,7 @@ void VisibilityController::setWidgetVisible(QWidget* pWidget, bool visible) {
         for (QWidget* pCurrent = pWidget; pCurrent;
                 pCurrent = pCurrent->parentWidget()) {
             m_hiddenWidgets.remove(pCurrent);
+            m_collapsedWidgets.remove(pCurrent);
             if (pCurrent == m_pSkinRoot) {
                 break;
             }
@@ -124,6 +205,7 @@ void VisibilityController::setWidgetTreeVisible(QWidget* pWidget, bool visible) 
         for (QWidget* pCurrent = pWidget; pCurrent;
                 pCurrent = pCurrent->parentWidget()) {
             m_hiddenWidgets.remove(pCurrent);
+            m_collapsedWidgets.remove(pCurrent);
             if (pCurrent == m_pSkinRoot) {
                 break;
             }
@@ -136,6 +218,7 @@ void VisibilityController::setWidgetTreeVisible(QWidget* pWidget, bool visible) 
         }
         if (visible) {
             m_hiddenWidgets.remove(pCurrent);
+            m_collapsedWidgets.remove(pCurrent);
         } else {
             m_hiddenWidgets.insert(pCurrent);
         }
@@ -149,6 +232,7 @@ void VisibilityController::setWidgetTreeVisible(QWidget* pWidget, bool visible) 
 
 void VisibilityController::setAllWidgetsVisible(bool visible) {
     m_hiddenWidgets.clear();
+    m_collapsedWidgets.clear();
     if (!visible) {
         const QList<QWidget*> widgets = controllableWidgets();
         for (QWidget* pWidget : widgets) {
@@ -210,6 +294,8 @@ QList<WidgetSelector> VisibilityController::loadProfile(const QString& filePath,
             selector.tooltipId = object.value(QStringLiteral("tooltipId")).toString();
             selector.controlKey = object.value(QStringLiteral("controlKey")).toString();
             selector.widgetType = object.value(QStringLiteral("widgetType")).toString();
+            selector.retainSpace =
+                    object.value(QStringLiteral("retainSpace")).toBool(true);
         }
         if (selector.isValid()) {
             selectors.append(selector);
@@ -280,6 +366,9 @@ void VisibilityController::hideMatchingWidgets(const WidgetSelector& selector) {
 
     for (QWidget* pWidget : std::as_const(matches)) {
         m_hiddenWidgets.insert(pWidget);
+        if (!selector.retainSpace) {
+            m_collapsedWidgets.insert(pWidget);
+        }
     }
 }
 
@@ -288,7 +377,8 @@ void VisibilityController::applyHiddenState(QWidget* pWidget) {
     m_widgetStates.append(
             {QPointer<QWidget>(pWidget), previousSizePolicy, pWidget->isHidden()});
     QSizePolicy retainedSizePolicy = previousSizePolicy;
-    retainedSizePolicy.setRetainSizeWhenHidden(true);
+    retainedSizePolicy.setRetainSizeWhenHidden(
+            !m_collapsedWidgets.contains(pWidget));
     pWidget->setSizePolicy(retainedSizePolicy);
     pWidget->hide();
 }
@@ -350,6 +440,7 @@ void VisibilityController::refreshFrozenControls() {
     QSet<ConfigKey> keysToFreeze;
     for (auto it = editorCounts.constBegin(); it != editorCounts.constEnd(); ++it) {
         if (hiddenEditorCounts.value(it.key()) == it.value() &&
+                !m_forcedControlValues.contains(it.key()) &&
                 ControlObject::exists(it.key())) {
             keysToFreeze.insert(it.key());
         }
@@ -372,6 +463,17 @@ void VisibilityController::refreshFrozenControls() {
         }
     }
     m_frozenControlKeys = keysToFreeze;
+
+    for (auto it = m_forcedControlValues.constBegin();
+            it != m_forcedControlValues.constEnd();
+            ++it) {
+        ControlObject* pControl =
+                ControlObject::getControl(it.key(), ControlFlag::NoWarnIfMissing);
+        if (pControl) {
+            pControl->setFrozenAtDefault(false);
+            pControl->setAndConfirm(it.value());
+        }
+    }
 }
 
 void VisibilityController::releaseFrozenControls() {

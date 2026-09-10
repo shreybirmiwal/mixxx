@@ -1,14 +1,18 @@
 #include "mixxxmainwindow.h"
 
+#include <QAction>
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDebug>
 #include <QDir>
 #include <QFileDialog>
+#include <QLabel>
 #include <QOpenGLContext>
 #include <QPushButton>
 #include <QScreen>
+#include <QTimer>
 #include <QToolBar>
+#include <QToolTip>
 #include <QUrl>
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -79,6 +83,7 @@
 namespace {
 const ConfigKey kHideMenuBarConfigKey = ConfigKey("[Config]", "hide_menubar");
 const ConfigKey kMenuBarHintConfigKey = ConfigKey("[Config]", "show_menubar_hint");
+constexpr int kLevelZeroGuideStepCount = 8;
 } // namespace
 
 MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServices)
@@ -135,7 +140,9 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             "QToolBar { background: #0b0d12; border: 0; padding: 7px 10px; } "
             "QPushButton { background: #6847ed; border: 1px solid #896fff; "
             "border-radius: 8px; color: white; font-weight: 700; padding: 7px 13px; } "
-            "QPushButton:hover { background: #795af2; }"));
+            "QPushButton:hover { background: #795af2; } "
+            "QLabel#levelZeroGuideLabel { color: #f7f8fb; font-size: 13px; "
+            "font-weight: 650; padding: 4px 12px; }"));
     auto pBackToMenu =
             make_parented<QPushButton>(tr("←  Back to menu"), m_pTutorialToolBar);
     pBackToMenu->setObjectName(QStringLiteral("backToTutorialMenuButton"));
@@ -151,6 +158,32 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
     pAdminControls->setAccessibleName(tr("Admin visibility controls"));
     m_pTutorialToolBar->addSeparator();
     m_pTutorialToolBar->addWidget(pAdminControls);
+
+    m_pTutorialGuideLabel =
+            make_parented<QLabel>(m_pTutorialToolBar);
+    m_pTutorialGuideLabel->setObjectName(QStringLiteral("levelZeroGuideLabel"));
+    m_pTutorialGuideLabel->setWordWrap(false);
+    m_pTutorialGuideLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    m_pTutorialGuidePrevious =
+            make_parented<QPushButton>(tr("Previous"), m_pTutorialToolBar);
+    m_pTutorialGuideNext =
+            make_parented<QPushButton>(tr("Next"), m_pTutorialToolBar);
+    m_pTutorialToolBar->addSeparator();
+    m_pTutorialToolBar->addWidget(m_pTutorialGuideLabel);
+    m_pTutorialToolBar->addWidget(m_pTutorialGuidePrevious);
+    m_pTutorialToolBar->addWidget(m_pTutorialGuideNext);
+    m_pTutorialGuideLabel->hide();
+    m_pTutorialGuidePrevious->hide();
+    m_pTutorialGuideNext->hide();
+    connect(m_pTutorialGuidePrevious.get(), &QPushButton::clicked, this, [this] {
+        showLevelZeroGuideStep(m_levelZeroGuideStep - 1);
+    });
+    connect(m_pTutorialGuideNext.get(), &QPushButton::clicked, this, [this] {
+        showLevelZeroGuideStep(
+                m_levelZeroGuideStep == kLevelZeroGuideStepCount - 1
+                        ? 0
+                        : m_levelZeroGuideStep + 1);
+    });
     addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
     m_pTutorialToolBar->hide();
 
@@ -624,8 +657,17 @@ void MixxxMainWindow::showTutorialHome() {
         m_pTutorialVisibility.reset();
     }
     m_activeTutorialId.clear();
+    QToolTip::hideText();
+    m_pTutorialGuideLabel->hide();
+    m_pTutorialGuidePrevious->hide();
+    m_pTutorialGuideNext->hide();
     m_pTutorialVisibilityPanel->hide();
     m_pTutorialToolBar->hide();
+    m_pMenuBar->setEnabled(true);
+    for (QAction* pAction : m_pMenuBar->actions()) {
+        pAction->setVisible(true);
+    }
+    m_pMenuBar->show();
 
     QWidget* pDjWorkspace = takeCentralWidget();
     VERIFY_OR_DEBUG_ASSERT(pDjWorkspace == m_pCentralWidget) {
@@ -678,13 +720,156 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
                                 m_pTutorialVisibilityPanel->width()),
                 available.top() + 40);
     }
-    m_pTutorialVisibilityPanel->show();
-    m_pTutorialVisibilityPanel->raise();
+    const bool isLevelZero = tutorialId == QStringLiteral("level-zero");
+    m_pMenuBar->setEnabled(!isLevelZero);
+    for (QAction* pAction : m_pMenuBar->actions()) {
+        pAction->setVisible(!isLevelZero);
+    }
+    m_pMenuBar->setVisible(!isLevelZero);
+    m_pTutorialVisibilityPanel->setVisible(!isLevelZero);
+    if (!isLevelZero) {
+        m_pTutorialVisibilityPanel->raise();
+    }
     m_pTutorialToolBar->show();
+    m_pTutorialGuideLabel->setVisible(isLevelZero);
+    m_pTutorialGuidePrevious->setVisible(isLevelZero);
+    m_pTutorialGuideNext->setVisible(isLevelZero);
+    if (isLevelZero) {
+        QTimer::singleShot(150, this, [this] {
+            showLevelZeroGuideStep(0);
+        });
+    }
 
     if (pTutorialHome) {
         pTutorialHome->setParent(this);
         pTutorialHome->deleteLater();
+    }
+}
+
+QWidget* MixxxMainWindow::findLevelZeroGuideTarget(const QString& objectName,
+        const QString& within,
+        const QString& tooltipId,
+        const QString& controlKey,
+        const QString& widgetType) const {
+    if (!m_pCentralWidget) {
+        return nullptr;
+    }
+
+    QList<QWidget*> scopes;
+    if (within.isEmpty()) {
+        scopes.append(m_pCentralWidget);
+    } else {
+        if (m_pCentralWidget->objectName() == within) {
+            scopes.append(m_pCentralWidget);
+        }
+        scopes.append(m_pCentralWidget->findChildren<QWidget*>(within));
+    }
+
+    const auto matches = [&](QWidget* pWidget) {
+        return pWidget && pWidget->isVisibleTo(m_pCentralWidget) &&
+                (objectName.isEmpty() || pWidget->objectName() == objectName) &&
+                (tooltipId.isEmpty() ||
+                        pWidget->property("mixxxTooltipId").toString() == tooltipId) &&
+                (controlKey.isEmpty() ||
+                        pWidget->property("mixxxControlKeys")
+                                .toStringList()
+                                .contains(controlKey)) &&
+                (widgetType.isEmpty() ||
+                        pWidget->property("mixxxSkinWidgetType").toString() == widgetType);
+    };
+    for (QWidget* pScope : std::as_const(scopes)) {
+        if (matches(pScope)) {
+            return pScope;
+        }
+        const QList<QWidget*> children = pScope->findChildren<QWidget*>();
+        for (QWidget* pChild : children) {
+            if (matches(pChild)) {
+                return pChild;
+            }
+        }
+    }
+    return nullptr;
+}
+
+void MixxxMainWindow::showLevelZeroGuideStep(int step) {
+    if (m_activeTutorialId != QStringLiteral("level-zero") ||
+            !m_pTutorialGuideLabel->isVisible()) {
+        return;
+    }
+    m_levelZeroGuideStep = qBound(0, step, kLevelZeroGuideStepCount - 1);
+
+    QString title;
+    QString detail;
+    QWidget* pTarget = nullptr;
+    switch (m_levelZeroGuideStep) {
+    case 0:
+        title = tr("Pick two songs");
+        detail = tr("Choose music here. Drag one song to the left deck and another to the right deck.");
+        pTarget = findLevelZeroGuideTarget(
+                QStringLiteral("LibraryContainer"));
+        break;
+    case 1:
+        title = tr("Load the left deck");
+        detail = tr("Drop your first song onto this left deck.");
+        pTarget = findLevelZeroGuideTarget(QStringLiteral("Deck1_Src"));
+        break;
+    case 2:
+        title = tr("Load the right deck");
+        detail = tr("Drop your second song onto this right deck.");
+        pTarget = findLevelZeroGuideTarget(QStringLiteral("Deck2_Src"));
+        break;
+    case 3:
+        title = tr("Read the waveforms");
+        detail = tr("These shapes show the music moving through both decks.");
+        pTarget = findLevelZeroGuideTarget(
+                QStringLiteral("WaveformsContainer"));
+        break;
+    case 4:
+        title = tr("Play and pause");
+        detail = tr("Use this button to start or pause the left track.");
+        pTarget = findLevelZeroGuideTarget(
+                QStringLiteral("PlayDeck"), QStringLiteral("Deck1_Src"));
+        break;
+    case 5:
+        title = tr("Match the tempo");
+        detail = tr("Move this tempo fader to speed the left track up or slow it down.");
+        pTarget = findLevelZeroGuideTarget(
+                QStringLiteral("RateSlider"), QStringLiteral("Deck1_Src"));
+        break;
+    case 6:
+        title = tr("Set the volume");
+        detail = tr("This fader controls the left deck's volume.");
+        pTarget = findLevelZeroGuideTarget({},
+                {},
+                QStringLiteral("channel_volume"),
+                QStringLiteral("[Channel1],volume"));
+        break;
+    case 7:
+        title = tr("Blend with the crossfader");
+        detail = tr("Move this between the left and right decks. You are ready for your first mix.");
+        pTarget = findLevelZeroGuideTarget(
+                {}, {}, QStringLiteral("crossfader"));
+        break;
+    }
+
+    m_pTutorialGuideLabel->setText(
+            tr("Level 0  ·  %1 of %2  ·  %3 — %4")
+                    .arg(m_levelZeroGuideStep + 1)
+                    .arg(kLevelZeroGuideStepCount)
+                    .arg(title, detail));
+    m_pTutorialGuidePrevious->setEnabled(m_levelZeroGuideStep > 0);
+    m_pTutorialGuideNext->setText(
+            m_levelZeroGuideStep == kLevelZeroGuideStepCount - 1
+                    ? tr("Restart")
+                    : tr("Next"));
+
+    QToolTip::hideText();
+    if (pTarget) {
+        QToolTip::showText(pTarget->mapToGlobal(pTarget->rect().center()),
+                QStringLiteral("<b>%1</b><br>%2").arg(title, detail),
+                pTarget,
+                QRect(),
+                15000);
     }
 }
 
