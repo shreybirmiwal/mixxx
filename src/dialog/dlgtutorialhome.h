@@ -14,8 +14,7 @@ class TutorialHomePage final : public QWidget {
     explicit TutorialHomePage(QWidget* parent = nullptr);
 
   signals:
-    void openDjWorkspaceRequested(
-            const QString& tutorialId, const QString& tutorialMode);
+    void openDjWorkspaceRequested(const QString& tutorialId);
 
   private slots:
     void showUpdateStatus();
@@ -24,7 +23,12 @@ class TutorialHomePage final : public QWidget {
   private:
     struct TutorialEntry {
         QString id;
+        QString level;
         QString title;
+        QString description;
+        QString skill;
+        QString duration;
+        bool available;
     };
 
     void addTutorialSection(QVBoxLayout* pLayout,

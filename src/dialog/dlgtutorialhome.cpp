@@ -65,8 +65,8 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             padding: 8px 0;
         }
         QFrame#freePlayCard {
-            background: #6847ed;
-            border: 1px solid #896fff;
+            background: #161a23;
+            border: 1px solid #303746;
             border-radius: 18px;
         }
         QLabel#freePlayTitle {
@@ -75,20 +75,20 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             font-weight: 800;
         }
         QLabel#freePlayDescription {
-            color: #e5ddff;
+            color: #aab2c2;
             font-size: 14px;
         }
         QPushButton#freePlayButton {
-            background: #ffffff;
-            border: 0;
+            background: #6847ed;
+            border: 1px solid #896fff;
             border-radius: 11px;
-            color: #2d1f67;
+            color: #ffffff;
             font-size: 15px;
             font-weight: 800;
             padding: 12px 20px;
         }
         QPushButton#freePlayButton:hover {
-            background: #f0ecff;
+            background: #795af2;
         }
         QScrollArea {
             background: transparent;
@@ -116,47 +116,54 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             border: 1px solid #202632;
             border-radius: 14px;
         }
-        QPushButton[tutorialCard="true"] {
-            background: #191d27;
-            border: 1px solid #292f3c;
-            border-radius: 12px;
-            color: #f6f7fa;
-            font-size: 15px;
-            font-weight: 700;
-            padding: 15px 18px;
-            text-align: left;
-        }
-        QPushButton[tutorialCard="true"]:hover {
-            background: #242a38;
-            border-color: #8b72ff;
-        }
-        QFrame[tutorialModeCard="true"] {
+        QFrame[lessonCard="true"] {
             background: #191d27;
             border: 1px solid #292f3c;
             border-radius: 12px;
         }
-        QLabel[tutorialModeTitle="true"] {
-            color: #f6f7fa;
-            font-size: 15px;
-            font-weight: 700;
+        QLabel[levelBadge="true"] {
+            background: #2b2152;
+            border: 1px solid #6847ed;
+            border-radius: 9px;
+            color: #cfc2ff;
+            font-size: 12px;
+            font-weight: 900;
+            padding: 7px 9px;
         }
-        QPushButton[tutorialMode="true"] {
+        QLabel[lessonTitle="true"] {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        QLabel[lessonDescription="true"] {
+            color: #aab2c2;
+            font-size: 13px;
+        }
+        QLabel[lessonMeta="true"] {
+            color: #a78bfa;
+            font-size: 12px;
+            font-weight: 750;
+        }
+        QPushButton[startLesson="true"] {
+            background: #6847ed;
+            border: 1px solid #896fff;
             border-radius: 9px;
             color: white;
             font-size: 13px;
             font-weight: 800;
-            padding: 9px 14px;
+            padding: 10px 15px;
         }
-        QPushButton[tutorialMode="true"][mode="learn"] {
-            background: #6847ed;
-            border: 1px solid #896fff;
+        QPushButton[startLesson="true"]:hover {
+            background: #795af2;
         }
-        QPushButton[tutorialMode="true"][mode="eval"] {
-            background: #202633;
-            border: 1px solid #465066;
-        }
-        QPushButton[tutorialMode="true"]:hover {
-            border-color: #a78bfa;
+        QLabel[comingSoon="true"] {
+            background: #202530;
+            border: 1px solid #343b4a;
+            border-radius: 8px;
+            color: #7f899a;
+            font-size: 12px;
+            font-weight: 750;
+            padding: 8px 11px;
         }
     )"));
 
@@ -190,12 +197,12 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     m_pUpdateStatus->hide();
     pRootLayout->addWidget(pUpdateStatus);
 
-    auto pTitle = make_parented<QLabel>(tr("Choose how you want to play"), this);
+    auto pTitle = make_parented<QLabel>(tr("Learn to DJ, one skill at a time"), this);
     pTitle->setObjectName(QStringLiteral("title"));
     pRootLayout->addWidget(pTitle);
 
     auto pSubtitle = make_parented<QLabel>(
-            tr("Learn pauses and waits for every move. Eval removes the hints and scores your run from 1–3 stars."), this);
+            tr("A step-by-step DJ course. Each lesson watches what you do, checks the skill, and unlocks your next step."), this);
     pSubtitle->setObjectName(QStringLiteral("subtitle"));
     pSubtitle->setWordWrap(true);
     pRootLayout->addWidget(pSubtitle);
@@ -227,7 +234,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             &QPushButton::clicked,
             this,
             [this] {
-                emit openDjWorkspaceRequested(QString(), QStringLiteral("free-play"));
+                emit openDjWorkspaceRequested(QString());
             });
     pFreePlayLayout->addWidget(pFreePlayButton);
     pRootLayout->addWidget(pFreePlayCard);
@@ -244,37 +251,53 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     pTutorialLayout->setSpacing(14);
 
     addTutorialSection(pTutorialLayout,
-            tr("Basics"),
-            tr("Learn the controls that make every mix work."),
-            {{QStringLiteral("level-zero"),
-                     tr("Level 0  —  Make your first mix (guided)")},
-                    {QStringLiteral("crossfader"),
-                     tr("Crossfader  —  Blend smoothly between two decks")},
-                    {QStringLiteral("bass-eq"),
-                            tr("EQ & Filter Knobs  —  Hear lows, mids, highs, and sweeps")},
-                    {QStringLiteral("beatmatching"),
-                            tr("Beatmatching  —  Align tempo and phase")},
-                    {QStringLiteral("cueing"),
-                            tr("Cueing  —  Prepare the next track in headphones")},
-                    {QStringLiteral("looping"),
-                            tr("Looping  —  Repeat beats and control a musical phrase")}});
+            tr("1  ·  Foundations"),
+            tr("Load music and understand the two-deck workspace."),
+            {{QStringLiteral("level-zero"), QStringLiteral("01"),
+                     tr("Your first mix"),
+                     tr("Load two songs, read the waveforms, press play, and move the essential faders."),
+                     tr("DECK BASICS"), tr("6 MIN"), true}});
     addTutorialSection(pTutorialLayout,
-            tr("Wordplay"),
-            tr("Build transitions around lyrics and memorable phrases."),
-            {{QStringLiteral("starships-one-more-time"),
-                     tr("Starships × One More Time")},
-                    {QStringLiteral("xyz"), tr("XYZ  —  Your next wordplay routine")},
-                    {QStringLiteral("phrase-matching"),
-                            tr("Phrase matching  —  Find the shared lyric moment")}});
+            tr("2  ·  Mixing controls"),
+            tr("Shape volume and frequency to move between songs."),
+            {{QStringLiteral("crossfader"), QStringLiteral("02"),
+                     tr("Crossfader control"),
+                     tr("Hear the left, center, and right positions, then perform a smooth blend."),
+                     tr("BLENDING"), tr("5 MIN"), true},
+                    {QStringLiteral("bass-eq"), QStringLiteral("03"),
+                            tr("EQ and filter knobs"),
+                            tr("Learn what HIGH, MID, LOW, and the filter remove from a song."),
+                            tr("TONE CONTROL"), tr("7 MIN"), true}});
     addTutorialSection(pTutorialLayout,
-            tr("Transitions"),
-            tr("Practice reliable ways to move between tracks."),
-            {{QStringLiteral("filter-sweep"),
-                     tr("Filter sweep  —  Clear space for the next track")},
-                    {QStringLiteral("echo-out"),
-                            tr("Echo out  —  Exit cleanly on the phrase")},
-                    {QStringLiteral("stem-handoff"),
-                            tr("Stem handoff  —  Trade drums, bass, melody, and vocals")}});
+            tr("3  ·  Timing and preparation"),
+            tr("Prepare the next track and make both songs move together."),
+            {{QStringLiteral("cueing"), QStringLiteral("04"),
+                     tr("Cue the next track"),
+                     tr("Preview Deck 2, set a cue point, and return to it before the mix."),
+                     tr("PREPARATION"), tr("6 MIN"), true},
+                    {QStringLiteral("beatmatching"), QStringLiteral("05"),
+                            tr("Match the tempo"),
+                            tr("Use SYNC and the tempo fader to understand BPM alignment."),
+                            tr("RHYTHM"), tr("7 MIN"), true},
+                    {QStringLiteral("looping"), QStringLiteral("06"),
+                            tr("Build and release a loop"),
+                            tr("Count a phrase, create a loop, resize it, exit, and reloop."),
+                            tr("PHRASING"), tr("7 MIN"), true}});
+    addTutorialSection(pTutorialLayout,
+            tr("4  ·  Creative transitions"),
+            tr("Combine the fundamentals into repeatable performance moves."),
+            {{QStringLiteral("filter-sweep"), QStringLiteral("07"),
+                     tr("Filter sweep transition"),
+                     tr("Clear frequency space while bringing the next track into the mix."),
+                     tr("TRANSITION"), tr("COMING NEXT"), false},
+                    {QStringLiteral("echo-out"), QStringLiteral("08"),
+                            tr("Echo-out transition"),
+                            tr("Exit a song cleanly at the end of a musical phrase."),
+                            tr("TRANSITION"), tr("COMING NEXT"), false},
+                    {QStringLiteral("starships-one-more-time"), QStringLiteral("09"),
+                            tr("Wordplay: Starships × One More Time"),
+                            tr("Use matching words and phrase timing to connect two recognizable moments."),
+                            tr("WORDPLAY"), tr("COMING NEXT"), false}});
 
     pTutorialLayout->addStretch();
     pScrollArea->setWidget(pScrollContent);
@@ -285,6 +308,7 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
         const QString& title,
         const QString& description,
         const QList<TutorialEntry>& tutorials) {
+    const bool expandedByDefault = pLayout->count() == 0;
     auto pSection = make_parented<QFrame>(pLayout->parentWidget());
     auto pSectionLayout = make_parented<QVBoxLayout>(pSection);
     pSectionLayout->setContentsMargins(0, 0, 0, 0);
@@ -297,83 +321,74 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
     pHeader->setAccessibleDescription(description);
     pHeader->setText(QStringLiteral("%1\n%2").arg(title, description));
     pHeader->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    pHeader->setArrowType(Qt::DownArrow);
+    pHeader->setArrowType(
+            expandedByDefault ? Qt::DownArrow : Qt::RightArrow);
     pHeader->setCheckable(true);
-    pHeader->setChecked(true);
+    pHeader->setChecked(expandedByDefault);
+    pHeader->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     pHeader->setCursor(Qt::PointingHandCursor);
     pSectionLayout->addWidget(pHeader);
 
     auto pBody = make_parented<QFrame>(pSection);
     pBody->setObjectName(QStringLiteral("tutorialSectionBody"));
     pBody->setProperty("sectionBody", true);
+    pBody->setVisible(expandedByDefault);
     auto pBodyLayout = make_parented<QVBoxLayout>(pBody);
     pBodyLayout->setContentsMargins(12, 12, 12, 12);
     pBodyLayout->setSpacing(9);
 
     for (const TutorialEntry& tutorial : tutorials) {
-        const bool hasInteractiveModes =
-                tutorial.id == QStringLiteral("level-zero") ||
-                tutorial.id == QStringLiteral("bass-eq") ||
-                tutorial.id == QStringLiteral("looping");
-        if (hasInteractiveModes) {
-            auto pModeCard = make_parented<QFrame>(pBody);
-            pModeCard->setProperty("tutorialModeCard", true);
-            auto pModeLayout = make_parented<QHBoxLayout>(pModeCard);
-            pModeLayout->setContentsMargins(18, 10, 10, 10);
-            pModeLayout->setSpacing(8);
-            auto pTitle = make_parented<QLabel>(tutorial.title, pModeCard);
-            pTitle->setProperty("tutorialModeTitle", true);
-            pModeLayout->addWidget(pTitle, 1);
+        auto pCard = make_parented<QFrame>(pBody);
+        pCard->setProperty("lessonCard", true);
+        pCard->setProperty("tutorialId", tutorial.id);
+        auto pCardLayout = make_parented<QHBoxLayout>(pCard);
+        pCardLayout->setContentsMargins(14, 11, 11, 11);
+        pCardLayout->setSpacing(13);
 
-            auto pLearn = make_parented<QPushButton>(tr("Learn"), pModeCard);
-            pLearn->setObjectName(QStringLiteral("tutorialLearnButton"));
-            pLearn->setProperty("tutorialCard", true);
-            pLearn->setProperty("tutorialId", tutorial.id);
-            pLearn->setProperty("tutorialMode", true);
-            pLearn->setProperty("mode", QStringLiteral("learn"));
-            pLearn->setAccessibleName(tr("Learn: %1").arg(tutorial.title));
-            pLearn->setCursor(Qt::PointingHandCursor);
-            connect(pLearn,
+        auto pLevel = make_parented<QLabel>(tutorial.level, pCard);
+        pLevel->setProperty("levelBadge", true);
+        pLevel->setAlignment(Qt::AlignCenter);
+        pCardLayout->addWidget(pLevel);
+
+        auto pCopyWidget = make_parented<QWidget>(pCard);
+        auto pCopy = make_parented<QVBoxLayout>(pCopyWidget);
+        pCopy->setContentsMargins(0, 0, 0, 0);
+        pCopy->setSpacing(3);
+        auto pTitle = make_parented<QLabel>(tutorial.title, pCopyWidget);
+        pTitle->setProperty("lessonTitle", true);
+        auto pDescription =
+                make_parented<QLabel>(tutorial.description, pCopyWidget);
+        pDescription->setProperty("lessonDescription", true);
+        pDescription->setWordWrap(true);
+        auto pMeta = make_parented<QLabel>(
+                QStringLiteral("%1   ·   %2").arg(tutorial.skill, tutorial.duration),
+                pCopyWidget);
+        pMeta->setProperty("lessonMeta", true);
+        pCopy->addWidget(pTitle);
+        pCopy->addWidget(pDescription);
+        pCopy->addWidget(pMeta);
+        pCardLayout->addWidget(pCopyWidget, 1);
+
+        if (tutorial.available) {
+            auto pStart = make_parented<QPushButton>(tr("Start lesson  →"), pCard);
+            pStart->setObjectName(QStringLiteral("startLessonButton"));
+            pStart->setProperty("startLesson", true);
+            pStart->setProperty("tutorialId", tutorial.id);
+            pStart->setAccessibleName(tr("Start: %1").arg(tutorial.title));
+            pStart->setCursor(Qt::PointingHandCursor);
+            connect(pStart,
                     &QPushButton::clicked,
                     this,
                     [this, tutorialId = tutorial.id] {
-                        emit openDjWorkspaceRequested(
-                                tutorialId, QStringLiteral("learn"));
+                        emit openDjWorkspaceRequested(tutorialId);
                     });
-            pModeLayout->addWidget(pLearn);
-
-            auto pEval = make_parented<QPushButton>(tr("Eval"), pModeCard);
-            pEval->setObjectName(QStringLiteral("tutorialEvalButton"));
-            pEval->setProperty("tutorialMode", true);
-            pEval->setProperty("tutorialId", tutorial.id);
-            pEval->setProperty("mode", QStringLiteral("eval"));
-            pEval->setAccessibleName(tr("Evaluate: %1").arg(tutorial.title));
-            pEval->setCursor(Qt::PointingHandCursor);
-            connect(pEval,
-                    &QPushButton::clicked,
-                    this,
-                    [this, tutorialId = tutorial.id] {
-                        emit openDjWorkspaceRequested(
-                                tutorialId, QStringLiteral("eval"));
-                    });
-            pModeLayout->addWidget(pEval);
-            pBodyLayout->addWidget(pModeCard);
-            continue;
+            pCardLayout->addWidget(pStart);
+        } else {
+            auto pComingSoon = make_parented<QLabel>(tr("Coming soon"), pCard);
+            pComingSoon->setProperty("comingSoon", true);
+            pCardLayout->addWidget(pComingSoon);
         }
-        auto pTutorialButton = make_parented<QPushButton>(tutorial.title, pBody);
-        pTutorialButton->setObjectName(QStringLiteral("tutorialButton"));
-        pTutorialButton->setProperty("tutorialCard", true);
-        pTutorialButton->setProperty("tutorialId", tutorial.id);
-        pTutorialButton->setAccessibleName(tutorial.title);
-        pTutorialButton->setCursor(Qt::PointingHandCursor);
-        connect(pTutorialButton,
-                &QPushButton::clicked,
-                this,
-                [this, tutorialId = tutorial.id] {
-                    emit openDjWorkspaceRequested(
-                            tutorialId, QStringLiteral("learn"));
-                });
-        pBodyLayout->addWidget(pTutorialButton);
+        pBodyLayout->addWidget(pCard);
     }
     pSectionLayout->addWidget(pBody);
 
