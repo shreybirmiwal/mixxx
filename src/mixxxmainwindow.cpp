@@ -55,6 +55,7 @@
 #include "broadcast/broadcastmanager.h"
 #endif
 #include "control/controlindicatortimer.h"
+#include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "library/library.h"
 #include "library/library_decl.h"
@@ -106,6 +107,7 @@ enum class TutorialAction {
     ControlBelow,
     ControlAbove,
     ControlNear,
+    ControlPairNear,
     TrackReload,
     PlaybackWait,
 };
@@ -126,7 +128,10 @@ struct TutorialGuideStep {
             bool pauseOnEnter = false,
             int listenAfterMs = 650,
             double expectedValue = 0.0,
-            bool manualAdvance = false)
+            bool manualAdvance = false,
+            QString comparisonGroup = {},
+            QString comparisonItem = {},
+            bool circularComparison = false)
             : title(std::move(title)),
               detail(std::move(detail)),
               objectName(std::move(objectName)),
@@ -142,7 +147,10 @@ struct TutorialGuideStep {
               pauseOnEnter(pauseOnEnter),
               listenAfterMs(listenAfterMs),
               expectedValue(expectedValue),
-              manualAdvance(manualAdvance) {
+              manualAdvance(manualAdvance),
+              comparisonGroup(std::move(comparisonGroup)),
+              comparisonItem(std::move(comparisonItem)),
+              circularComparison(circularComparison) {
     }
 
     QString title;
@@ -161,7 +169,24 @@ struct TutorialGuideStep {
     int listenAfterMs;
     double expectedValue;
     bool manualAdvance;
+    QString comparisonGroup;
+    QString comparisonItem;
+    bool circularComparison;
 };
+
+bool tutorialControlPairIsNear(
+        const TutorialGuideStep& step, double actionValue) {
+    if (step.comparisonGroup.isEmpty() || step.comparisonItem.isEmpty()) {
+        return false;
+    }
+    const double comparisonValue = ControlObject::get(
+            ConfigKey(step.comparisonGroup, step.comparisonItem));
+    double difference = qAbs(actionValue - comparisonValue);
+    if (step.circularComparison) {
+        difference = qMin(difference, qAbs(1.0 - difference));
+    }
+    return difference <= step.changeThreshold;
+}
 
 bool tutorialStepUsesNextButton(const TutorialGuideStep& step) {
     return step.action == TutorialAction::Acknowledge || step.manualAdvance;
@@ -458,53 +483,48 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     if (tutorialId == QStringLiteral("beatmatching")) {
         return {
                 {QObject::tr("Start Deck 1"),
-                        QObject::tr("Press Play on Deck 1. This will be the reference track whose tempo Deck 2 follows."),
+                        QObject::tr("Press Play on Deck 1. This is your reference track: Deck 2 needs to match its speed and its beat position."),
                         QStringLiteral("PlayDeck"), QStringLiteral("Deck1_Src"),
                         {}, {}, {}, TutorialAction::ControlPositive,
                         QStringLiteral("[Channel1]"), QStringLiteral("play"),
                         0.01, 0, true, 1000},
                 {QObject::tr("Start Deck 2"),
-                        QObject::tr("Press Play on Deck 2. The songs begin with different BPM values, so their beats drift apart."),
+                        QObject::tr("Press Play on Deck 2. The songs begin at different speeds and positions, so the kick drums do not stay together."),
                         QStringLiteral("PlayDeck"), QStringLiteral("Deck2_Src"),
                         {}, {}, {}, TutorialAction::ControlPositive,
                         QStringLiteral("[Channel2]"), QStringLiteral("play"),
                         0.01, 0, false, 1000},
-                {QObject::tr("Hear the drift"),
-                        QObject::tr("Listen to the kick drums and watch both waveforms. Without matching, the rhythmic peaks stop lining up."),
+                {QObject::tr("Hear and see the drift"),
+                        QObject::tr("Listen to the kick drums and watch the two scrolling waveform bars. Their beat-grid lines keep separating because the tempos differ."),
                         QStringLiteral("WaveformsContainer"),
                         {}, {}, {}, {}, TutorialAction::PlaybackWait,
                         QStringLiteral("[Channel1]"), QStringLiteral("play"),
                         0.01, 3000, false, 300},
-                {QObject::tr("Match Deck 2 with SYNC"),
-                        QObject::tr("Press SYNC on Deck 2. It matches the tempo to the reference so both tracks share a BPM."),
-                        QStringLiteral("SyncDeck"), QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::ControlPositive,
-                        QStringLiteral("[Channel2]"), QStringLiteral("sync_enabled"),
-                        0.01, 0, false, 1600},
-                {QObject::tr("Read the matched waveforms"),
-                        QObject::tr("The tempo is matched. Watch the beat markers travel together and listen for a steadier combined rhythm."),
+                {QObject::tr("Match speed before position"),
+                        QObject::tr("Beat matching has two parts. First make both BPM values equal with the tempo fader. Then nudge the beat bars into the same position."),
+                        QStringLiteral("RateSlider"), QStringLiteral("Deck2_Src"),
+                        {}, {}, {}, TutorialAction::Acknowledge},
+                {QObject::tr("Match the BPM by hand"),
+                        QObject::tr("Move Deck 2's tempo fader until its BPM matches Deck 1. Watch the BPM readouts: LeetDJ will detect when the speeds are close enough."),
+                        QStringLiteral("RateSlider"), QStringLiteral("Deck2_Src"),
+                        {}, {}, {}, TutorialAction::ControlPairNear,
+                        QStringLiteral("[Channel2]"), QStringLiteral("bpm"),
+                        0.15, 0, false, 1200, 0.0, false,
+                        QStringLiteral("[Channel1]"), QStringLiteral("bpm")},
+                {QObject::tr("Now line up the beat bars"),
+                        QObject::tr("Drag Deck 2's small spinning disc forward or backward. Nudge it until the bright beat-grid lines in both waveform bars meet at the center playhead."),
+                        {}, QStringLiteral("Deck2_Src"), QStringLiteral("spinny"),
+                        {}, {}, TutorialAction::ControlPairNear,
+                        QStringLiteral("[Channel2]"), QStringLiteral("beat_distance"),
+                        0.06, 0, false, 1400, 0.0, false,
+                        QStringLiteral("[Channel1]"),
+                        QStringLiteral("beat_distance"), true},
+                {QObject::tr("Listen to the locked groove"),
+                        QObject::tr("Both tracks now move at the same speed and their beats land together. Listen for one steady kick instead of a loose double hit."),
                         QStringLiteral("WaveformsContainer"),
                         {}, {}, {}, {}, TutorialAction::PlaybackWait,
                         QStringLiteral("[Channel1]"), QStringLiteral("play"),
-                        0.01, 2500, false, 300},
-                {QObject::tr("Turn SYNC off"),
-                        QObject::tr("Press SYNC again. The matched speed remains, but Deck 2 is now available for a manual tempo adjustment."),
-                        QStringLiteral("SyncDeck"), QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::ControlChanged,
-                        QStringLiteral("[Channel2]"), QStringLiteral("sync_enabled"),
-                        0.5},
-                {QObject::tr("Adjust tempo by hand"),
-                        QObject::tr("Move Deck 2's tempo fader in both directions and watch its BPM change. Choose Next when you understand the relationship."),
-                        QStringLiteral("RateSlider"), QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::ControlChanged,
-                        QStringLiteral("[Channel2]"), QStringLiteral("rate"),
-                        0.005, 0, false, 1400, 0.0, true},
-                {QObject::tr("Recover the match"),
-                        QObject::tr("Press SYNC once more to recover a clean tempo match. Later lessons can teach matching it completely by ear."),
-                        QStringLiteral("SyncDeck"), QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::ControlPositive,
-                        QStringLiteral("[Channel2]"), QStringLiteral("sync_enabled"),
-                        0.01, 0, false, 1500},
+                        0.01, 3000, false, 300},
         };
     }
     if (tutorialId == QStringLiteral("channel-faders")) {
@@ -652,12 +672,23 @@ QHash<QString, double> tutorialStateRequirements(
 class TutorialFocusOverlay final : public QWidget {
   public:
     explicit TutorialFocusOverlay(QWidget* pParent)
-            : QWidget(pParent) {
+            : QWidget(pParent,
+                      Qt::Tool | Qt::FramelessWindowHint |
+                              Qt::NoDropShadowWindowHint |
+                              Qt::WindowStaysOnTopHint |
+                              Qt::WindowTransparentForInput),
+              m_pHostWidget(pParent),
+              m_pHostWindow(pParent->window()) {
         setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_TranslucentBackground);
         setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
         setFocusPolicy(Qt::NoFocus);
-        pParent->installEventFilter(this);
-        setGeometry(pParent->rect());
+        m_pHostWidget->installEventFilter(this);
+        if (m_pHostWindow && m_pHostWindow != m_pHostWidget) {
+            m_pHostWindow->installEventFilter(this);
+        }
+        syncGeometry();
     }
 
     void setTarget(QWidget* pTarget,
@@ -671,7 +702,7 @@ class TutorialFocusOverlay final : public QWidget {
         m_step = step;
         m_stepCount = stepCount;
         m_result = false;
-        setGeometry(parentWidget()->rect());
+        syncGeometry();
         show();
         raise();
         update();
@@ -682,7 +713,7 @@ class TutorialFocusOverlay final : public QWidget {
         m_title = title;
         m_detail = detail;
         m_result = true;
-        setGeometry(parentWidget()->rect());
+        syncGeometry();
         show();
         raise();
         update();
@@ -690,8 +721,14 @@ class TutorialFocusOverlay final : public QWidget {
 
   protected:
     bool eventFilter(QObject* pObject, QEvent* pEvent) override {
-        if (pObject == parentWidget() && pEvent->type() == QEvent::Resize) {
-            setGeometry(parentWidget()->rect());
+        if ((pObject == m_pHostWidget || pObject == m_pHostWindow) &&
+                (pEvent->type() == QEvent::Resize ||
+                        pEvent->type() == QEvent::Move ||
+                        pEvent->type() == QEvent::Show ||
+                        pEvent->type() == QEvent::WindowStateChange ||
+                        pEvent->type() == QEvent::LayoutRequest)) {
+            syncGeometry();
+            raise();
             update();
         }
         return QWidget::eventFilter(pObject, pEvent);
@@ -789,6 +826,16 @@ class TutorialFocusOverlay final : public QWidget {
     }
 
   private:
+    void syncGeometry() {
+        if (!m_pHostWidget) {
+            return;
+        }
+        setGeometry(QRect(m_pHostWidget->mapToGlobal(QPoint(0, 0)),
+                m_pHostWidget->size()));
+    }
+
+    QPointer<QWidget> m_pHostWidget;
+    QPointer<QWidget> m_pHostWindow;
     QPointer<QWidget> m_pTarget;
     QString m_title;
     QString m_detail;
@@ -1809,6 +1856,11 @@ void MixxxMainWindow::handleTutorialControlValue(double value) {
     case TutorialAction::ControlNear:
         if (qAbs(value - guideStep.expectedValue) <=
                 guideStep.changeThreshold) {
+            completeTutorialStep();
+        }
+        break;
+    case TutorialAction::ControlPairNear:
+        if (tutorialControlPairIsNear(guideStep, value)) {
             completeTutorialStep();
         }
         break;

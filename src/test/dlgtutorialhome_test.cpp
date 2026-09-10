@@ -40,6 +40,7 @@ TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
     }
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("level-zero")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("bass-eq")));
+    EXPECT_TRUE(tutorialIds.contains(QStringLiteral("beatmatching")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("looping")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("channel-faders")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("filter-sweep")));
