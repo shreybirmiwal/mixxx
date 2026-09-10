@@ -310,7 +310,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     auto pStatsLayout = make_parented<QVBoxLayout>(pStats);
     pStatsLayout->setContentsMargins(11, 10, 11, 10);
     pStatsLayout->setSpacing(3);
-    auto pStatsTitle = make_parented<QLabel>(tr("6 interactive lessons"), pStats);
+    auto pStatsTitle = make_parented<QLabel>(tr("8 interactive lessons"), pStats);
     pStatsTitle->setObjectName(QStringLiteral("sidebarStatsTitle"));
     auto pStatsCopy = make_parented<QLabel>(tr("A guided path from first track to first transition."), pStats);
     pStatsCopy->setObjectName(QStringLiteral("sidebarStatsCopy"));
@@ -398,9 +398,9 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
         pLayout->addWidget(pLabel);
         pCourseSummaryLayout->addWidget(pWidget);
     };
-    addSummary(tr("9"), tr("SKILLS"));
-    addSummary(tr("6"), tr("INTERACTIVE"));
-    addSummary(tr("~38 min"), tr("GUIDED PRACTICE"));
+    addSummary(tr("10"), tr("SKILLS"));
+    addSummary(tr("8"), tr("INTERACTIVE"));
+    addSummary(tr("~50 min"), tr("GUIDED PRACTICE"));
     pCourseSummaryLayout->addStretch();
     pMainLayout->addWidget(pCourseSummary);
 
@@ -427,39 +427,43 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             tr("Shape volume and frequency to move between songs."),
             {{QStringLiteral("crossfader"), QStringLiteral("02"),
                      tr("Crossfader control"),
-                     tr("Hear the left, center, and right positions, then perform a smooth blend."),
-                     tr("BLENDING"), tr("5 MIN"), true},
-                    {QStringLiteral("bass-eq"), QStringLiteral("03"),
+                    tr("Hear the left, center, and right positions, then perform a smooth blend."),
+                    tr("BLENDING"), tr("5 MIN"), true},
+                    {QStringLiteral("channel-faders"), QStringLiteral("03"),
+                            tr("Channel fader balance"),
+                            tr("Control each deck's loudness independently and build a balanced mix."),
+                            tr("LEVELS"), tr("6 MIN"), true},
+                    {QStringLiteral("bass-eq"), QStringLiteral("04"),
                             tr("EQ and filter knobs"),
                             tr("Learn what HIGH, MID, LOW, and the filter remove from a song."),
                             tr("TONE CONTROL"), tr("7 MIN"), true}});
     addTutorialSection(pTutorialLayout,
             tr("3  ·  Timing and preparation"),
             tr("Prepare the next track and make both songs move together."),
-            {{QStringLiteral("cueing"), QStringLiteral("04"),
+            {{QStringLiteral("cueing"), QStringLiteral("05"),
                      tr("Cue the next track"),
                      tr("Preview Deck 2, set a cue point, and return to it before the mix."),
                      tr("PREPARATION"), tr("6 MIN"), true},
-                    {QStringLiteral("beatmatching"), QStringLiteral("05"),
+                    {QStringLiteral("beatmatching"), QStringLiteral("06"),
                             tr("Match the tempo"),
                             tr("Use SYNC and the tempo fader to understand BPM alignment."),
                             tr("RHYTHM"), tr("7 MIN"), true},
-                    {QStringLiteral("looping"), QStringLiteral("06"),
+                    {QStringLiteral("looping"), QStringLiteral("07"),
                             tr("Build and release a loop"),
                             tr("Count a phrase, create a loop, resize it, exit, and reloop."),
                             tr("PHRASING"), tr("7 MIN"), true}});
     addTutorialSection(pTutorialLayout,
             tr("4  ·  Creative transitions"),
             tr("Combine the fundamentals into repeatable performance moves."),
-            {{QStringLiteral("filter-sweep"), QStringLiteral("07"),
+            {{QStringLiteral("filter-sweep"), QStringLiteral("08"),
                      tr("Filter sweep transition"),
                      tr("Clear frequency space while bringing the next track into the mix."),
-                     tr("TRANSITION"), tr("COMING NEXT"), false},
-                    {QStringLiteral("echo-out"), QStringLiteral("08"),
+                     tr("TRANSITION"), tr("6 MIN"), true},
+                    {QStringLiteral("echo-out"), QStringLiteral("09"),
                             tr("Echo-out transition"),
                             tr("Exit a song cleanly at the end of a musical phrase."),
                             tr("TRANSITION"), tr("COMING NEXT"), false},
-                    {QStringLiteral("starships-one-more-time"), QStringLiteral("09"),
+                    {QStringLiteral("starships-one-more-time"), QStringLiteral("10"),
                             tr("Wordplay: Starships × One More Time"),
                             tr("Use matching words and phrase timing to connect two recognizable moments."),
                             tr("WORDPLAY"), tr("COMING NEXT"), false}});
