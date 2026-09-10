@@ -1,5 +1,21 @@
 # Tutorial visibility profiles
 
+## Fixed tutorial music
+
+Guided lessons never use the learner's personal library. Each available lesson
+has fixed deck assignments in tutorial_catalog.json; every assignment names a
+track from audio/ and an exact startSeconds position. The application loads and
+seeks those tracks when the lesson opens, hides the normal library, and blocks
+file drops until the learner returns to the tutorial menu.
+
+The included recordings are original procedural LeetDJ tracks released under
+CC0. See audio/LICENSE.md. Rebuild them deterministically with:
+
+    python3 tools/generate_tutorial_audio.py
+
+When adding a lesson, add its catalog entry and keep its track/timestamp summary
+on the tutorial home card in sync.
+
 Edit `visibility_profiles.json` to decide which parts of the loaded Mixxx skin
 are on or off for each tutorial. The profile key must match the tutorial ID in
 `src/dialog/dlgtutorialhome.cpp`. Off controls are fully hidden, including

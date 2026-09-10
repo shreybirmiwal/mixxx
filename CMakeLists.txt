@@ -1628,6 +1628,7 @@ add_library(
   src/track/tracknumbers.cpp
   src/track/trackrecord.cpp
   src/track/trackref.cpp
+  src/tutorial/tutorialcatalog.cpp
   src/tutorial/tutorialvisibility.cpp
   src/tutorial/tutorialvisibilitypanel.cpp
   src/util/autofilereloader.cpp
@@ -2577,6 +2578,12 @@ if(NOT ANDROID)
     DESTINATION "${MIXXX_INSTALL_DATADIR}"
   )
 
+  # Guided lesson definitions and redistributable training tracks
+  install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/res/tutorials"
+    DESTINATION "${MIXXX_INSTALL_DATADIR}"
+  )
+
   # Translation files
   install(
     DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/res/translations"
@@ -2922,6 +2929,7 @@ if(BUILD_TESTING)
     src/test/duration_test.cpp
     src/test/dlgtutorialhome_test.cpp
     src/test/durationutiltest.cpp
+    src/test/tutorialcatalog_test.cpp
     src/test/tutorialvisibility_test.cpp
     #TODO: write useful tests for refactored effects system
     #src/test/effectchainslottest.cpp

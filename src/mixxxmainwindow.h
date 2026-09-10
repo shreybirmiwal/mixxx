@@ -130,7 +130,13 @@ class MixxxMainWindow : public QMainWindow {
     void tryParseAndSetDefaultStyleSheet();
 
     bool confirmExit();
-    void loadTutorialDemoTracks(const QString& tutorialId);
+    void loadTutorialTracks(const QString& tutorialId);
+    void seekTutorialTrack(const QString& tutorialId,
+            const QString& location,
+            int deck,
+            double startSeconds,
+            int attempt);
+    void setTutorialMediaDropGuard(bool enabled);
     void showTutorialGuideStep(int step);
     void armTutorialStep();
     void handleTutorialControlValue(double value);
@@ -162,6 +168,7 @@ class MixxxMainWindow : public QMainWindow {
     QWidget* m_pCentralWidget;
     QPointer<TutorialHomePage> m_pTutorialHomePage;
     parented_ptr<QToolBar> m_pTutorialToolBar;
+    parented_ptr<QLabel> m_pTutorialTrackLabel;
     parented_ptr<QLabel> m_pTutorialGuideLabel;
     parented_ptr<QPushButton> m_pTutorialCheckNext;
     QAction* m_pTutorialCheckNextAction{nullptr};
@@ -178,6 +185,7 @@ class MixxxMainWindow : public QMainWindow {
     double m_tutorialControlBaseline{0.0};
     std::unique_ptr<ControlProxy> m_pTutorialActionControl;
     QList<QPointer<QWidget>> m_tutorialStateLockedWidgets;
+    QList<QPointer<QObject>> m_tutorialDropGuardedObjects;
     bool m_showTutorialHomeWhenSkinLoaded{false};
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__

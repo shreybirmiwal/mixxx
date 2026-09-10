@@ -75,6 +75,7 @@
 #include "soundio/soundmanager.h"
 #include "sources/soundsourceproxy.h"
 #include "track/track.h"
+#include "tutorial/tutorialcatalog.h"
 #include "tutorial/tutorialvisibility.h"
 #include "tutorial/tutorialvisibilitypanel.h"
 #include "util/debug.h"
@@ -108,7 +109,6 @@ enum class TutorialAction {
     ControlAbove,
     ControlNear,
     ControlPairNear,
-    TrackReload,
     PlaybackWait,
 };
 
@@ -195,24 +195,20 @@ bool tutorialStepUsesNextButton(const TutorialGuideStep& step) {
 QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     if (tutorialId == QStringLiteral("level-zero")) {
         return {
-                {QObject::tr("This is your song library"),
-                        QObject::tr("Every song in your library appears here. In the next steps, you will choose one song for each deck."),
-                        QStringLiteral("LibraryContainer"),
+                {QObject::tr("Meet the tutorial library"),
+                        QObject::tr("Lessons use a small LeetDJ music pack so every instruction sounds the same for every learner. Personal files are unavailable during tutorials."),
+                        QStringLiteral("WaveformsContainer"),
                         {}, {}, {}, {}, TutorialAction::Acknowledge},
-                {QObject::tr("Choose song 1 for the left deck"),
-                        QObject::tr("Pick one song from the library, then drag and drop it directly into this glowing left title box. Its title, artwork, and waveform will appear here."),
+                {QObject::tr("Deck 1: Neon Current at 00:08"),
+                        QObject::tr("Neon Current is already loaded at exactly 00:08. Its title, artwork, and waveform appear on the left deck."),
                         QStringLiteral("TitleText"),
                         QStringLiteral("Deck1_Src"),
-                        {}, {}, {}, TutorialAction::TrackReload,
-                        QStringLiteral("[Channel1]"), QStringLiteral("track_samples"),
-                        1.0, 0, true},
-                {QObject::tr("Choose song 2 for the right deck"),
-                        QObject::tr("Pick a different song, then drag and drop it into this glowing right title box. This lets you prepare the next song while the first one plays."),
+                        {}, {}, {}, TutorialAction::Acknowledge},
+                {QObject::tr("Deck 2: Glass Horizon at 00:08"),
+                        QObject::tr("Glass Horizon is already loaded at exactly 00:08. The fixed pair lets this lesson coach the same musical moments every time."),
                         QStringLiteral("TitleText"),
                         QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::TrackReload,
-                        QStringLiteral("[Channel2]"), QStringLiteral("track_samples"),
-                        1.0, 0, true},
+                        {}, {}, {}, TutorialAction::Acknowledge},
                 {QObject::tr("Read the waveforms"),
                         QObject::tr("The colored shapes are pictures of the sound. The music moves through the center line, helping you see loud sections and upcoming changes."),
                         QStringLiteral("WaveformsContainer"),
@@ -309,12 +305,10 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     }
     if (tutorialId == QStringLiteral("bass-eq")) {
         return {
-                {QObject::tr("Load a song"),
-                        QObject::tr("Choose a song you know well and drag it onto the left deck. Hearing a familiar song makes the tone controls easier to understand."),
-                        QStringLiteral("LibraryContainer"),
-                        {}, {}, {}, {}, TutorialAction::TrackReload,
-                        QStringLiteral("[Channel1]"), QStringLiteral("track_samples"),
-                        1.0, 0, true},
+                {QObject::tr("Solar Circuit at 00:32"),
+                        QObject::tr("Solar Circuit is already loaded on Deck 1 at exactly 00:32, where its drums, bass, and bright lead make each EQ band easy to hear."),
+                        QStringLiteral("TitleText"), QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::Acknowledge},
                 {QObject::tr("Start the music"),
                         QObject::tr("Press Play. Leave the song running while you test each knob so your ears can hear the change immediately."),
                         QStringLiteral("PlayDeck"),
@@ -367,12 +361,10 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     }
     if (tutorialId == QStringLiteral("looping")) {
         return {
-                {QObject::tr("Load one song"),
-                        QObject::tr("Pick a song with a clear drum beat and drag it onto the left deck."),
-                        QStringLiteral("LibraryContainer"),
-                        {}, {}, {}, {}, TutorialAction::TrackReload,
-                        QStringLiteral("[Channel1]"), QStringLiteral("track_samples"),
-                        1.0, 0, true},
+                {QObject::tr("Solar Circuit at 00:48"),
+                        QObject::tr("Solar Circuit is already loaded on Deck 1 at exactly 00:48, at the start of a clear drum phrase built for loop practice."),
+                        QStringLiteral("TitleText"), QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::Acknowledge},
                 {QObject::tr("Start the song"),
                         QObject::tr("Press Play and listen for the steady count: one, two, three, four."),
                         QStringLiteral("PlayDeck"),
@@ -435,12 +427,10 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     }
     if (tutorialId == QStringLiteral("cueing")) {
         return {
-                {QObject::tr("Load the next song"),
-                        QObject::tr("Drag a song into Deck 2. DJs prepare the next track on the right while the current track stays on the left."),
+                {QObject::tr("Glass Horizon at 00:40"),
+                        QObject::tr("Glass Horizon is already loaded on Deck 2 at exactly 00:40. Neon Current remains fixed on Deck 1 while you prepare this incoming track."),
                         QStringLiteral("TitleText"), QStringLiteral("Deck2_Src"),
-                        {}, {}, {}, TutorialAction::TrackReload,
-                        QStringLiteral("[Channel2]"), QStringLiteral("track_samples"),
-                        1.0, 0, true},
+                        {}, {}, {}, TutorialAction::Acknowledge},
                 {QObject::tr("Send Deck 2 to headphones"),
                         QObject::tr("Press the headphone/PFL button for Deck 2. This is the private preview path; the audience mix does not need to hear it."),
                         {}, QStringLiteral("MixerChannel_2Decks_Right"),
@@ -901,6 +891,8 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
             "QPushButton:hover { background: #795af2; } "
             "QPushButton#tutorialCheckNextButton[stepReady=\"true\"] { "
             "background: #17875e; border-color: #49d69c; } "
+            "QLabel#tutorialTrackLabel { color: #72ddb0; font-size: 10px; "
+            "font-weight: 700; padding: 4px 10px; } "
             "QLabel#levelZeroGuideLabel { color: #f7f8fb; font-size: 13px; "
             "font-weight: 650; padding: 4px 12px; }"));
     auto pBackToMenu =
@@ -918,6 +910,15 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
     pAdminControls->setAccessibleName(tr("Admin visibility controls"));
     m_pTutorialToolBar->addSeparator();
     m_pTutorialToolBar->addWidget(pAdminControls);
+
+    m_pTutorialTrackLabel = make_parented<QLabel>(m_pTutorialToolBar);
+    m_pTutorialTrackLabel->setObjectName(QStringLiteral("tutorialTrackLabel"));
+    m_pTutorialTrackLabel->setWordWrap(false);
+    m_pTutorialTrackLabel->setToolTip(
+            tr("Fixed tracks and starting positions from the LeetDJ tutorial library"));
+    m_pTutorialToolBar->addSeparator();
+    m_pTutorialToolBar->addWidget(m_pTutorialTrackLabel);
+    m_pTutorialTrackLabel->hide();
 
     m_pTutorialGuideLabel =
             make_parented<QLabel>(m_pTutorialToolBar);
@@ -1513,6 +1514,7 @@ void MixxxMainWindow::showTutorialHome() {
         m_pTutorialFocusOverlay->hide();
     }
     m_pTutorialGuideLabel->hide();
+    m_pTutorialTrackLabel->hide();
     m_pTutorialCheckNextAction->setVisible(false);
     m_pTutorialVisibilityPanel->hide();
     m_pTutorialToolBar->hide();
@@ -1556,6 +1558,7 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
 
     m_activeTutorialId = tutorialId;
     if (!m_activeTutorialId.isEmpty()) {
+        setTutorialMediaDropGuard(true);
         QToolTip::hideText();
 #ifdef MIXXX_USE_QOPENGL
         ToolTipQOpenGL::singleton().setActive(false);
@@ -1607,7 +1610,7 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
             m_pTutorialFocusOverlay = new TutorialFocusOverlay(m_pCentralWidget);
         }
         m_pTutorialFocusOverlay->show();
-        loadTutorialDemoTracks(tutorialId);
+        loadTutorialTracks(tutorialId);
         QTimer::singleShot(600, this, [this] {
             showTutorialGuideStep(0);
         });
@@ -1619,60 +1622,92 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     }
 }
 
-void MixxxMainWindow::loadTutorialDemoTracks(const QString& tutorialId) {
-    if (tutorialId != QStringLiteral("crossfader") &&
-            tutorialId != QStringLiteral("channel-faders") &&
-            tutorialId != QStringLiteral("filter-sweep") &&
-            tutorialId != QStringLiteral("cueing") &&
-            tutorialId != QStringLiteral("beatmatching")) {
-        return;
-    }
-    const auto pTrackCollectionManager =
-            m_pCoreServices->getTrackCollectionManager();
+void MixxxMainWindow::loadTutorialTracks(const QString& tutorialId) {
     const auto pPlayerManager = m_pCoreServices->getPlayerManager();
-    if (!pTrackCollectionManager || !pPlayerManager) {
+    if (!pPlayerManager) {
         return;
     }
 
-    QStringList locations = pTrackCollectionManager->internalCollection()
-                                    ->getTrackDAO()
-                                    .getAllExistingTrackLocations()
-                                    .values();
-    locations.removeIf([](const QString& location) {
-        return !QFileInfo::exists(location);
-    });
-    const auto tutorialTrackScore = [](const QString& location) {
-        const QString lower = location.toLower();
-        int score = 0;
-        if (lower.contains(QStringLiteral("serato demo tracks"))) {
-            score += 100;
-        }
-        if (lower.contains(QStringLiteral("starter pack"))) {
-            score += 50;
-        }
-        if (lower.contains(QStringLiteral("house track"))) {
-            score += 25;
-        }
-        return score;
-    };
-    std::sort(locations.begin(),
-            locations.end(),
-            [&](const QString& left, const QString& right) {
-                const int leftScore = tutorialTrackScore(left);
-                const int rightScore = tutorialTrackScore(right);
-                return leftScore == rightScore ? left < right : leftScore > rightScore;
-            });
-    if (locations.isEmpty()) {
+    const QString catalogPath =
+            QDir(m_pCoreServices->getSettings()->getResourcePath())
+                    .filePath(QStringLiteral("tutorials/tutorial_catalog.json"));
+    QString error;
+    const auto catalog = mixxx::tutorial::Catalog::load(catalogPath, &error);
+    const auto assignments = catalog.assignmentsFor(tutorialId);
+    if (!catalog.isValid() || assignments.isEmpty()) {
+        qWarning() << "Tutorial music unavailable:" << error;
+        m_pTutorialTrackLabel->setText(
+                tr("TUTORIAL MUSIC UNAVAILABLE"));
+        m_pTutorialTrackLabel->show();
         return;
     }
 
-    pPlayerManager->slotLoadToDeck(locations.at(0), 1);
-    if ((tutorialId == QStringLiteral("crossfader") ||
-                tutorialId == QStringLiteral("channel-faders") ||
-                tutorialId == QStringLiteral("filter-sweep") ||
-                tutorialId == QStringLiteral("beatmatching")) &&
-            locations.size() > 1) {
-        pPlayerManager->slotLoadToDeck(locations.at(1), 2);
+    m_pTutorialTrackLabel->setText(
+            tr("TUTORIAL LIBRARY  ·  %1").arg(catalog.assignmentSummary(tutorialId)));
+    m_pTutorialTrackLabel->show();
+    for (const auto& assignment : assignments) {
+        pPlayerManager->slotLoadToDeck(assignment.location, assignment.deck);
+        seekTutorialTrack(tutorialId,
+                assignment.location,
+                assignment.deck,
+                assignment.startSeconds,
+                0);
+    }
+}
+
+void MixxxMainWindow::seekTutorialTrack(const QString& tutorialId,
+        const QString& location,
+        int deck,
+        double startSeconds,
+        int attempt) {
+    if (m_activeTutorialId != tutorialId || attempt >= 30) {
+        return;
+    }
+    const auto pPlayerManager = m_pCoreServices->getPlayerManager();
+    BaseTrackPlayer* pPlayer = pPlayerManager
+            ? pPlayerManager->getPlayer(PlayerManager::groupForDeck(deck - 1))
+            : nullptr;
+    const TrackPointer pTrack = pPlayer ? pPlayer->getLoadedTrack() : nullptr;
+    if (!pTrack ||
+            QFileInfo(pTrack->getLocation()).canonicalFilePath() !=
+                    QFileInfo(location).canonicalFilePath() ||
+            pTrack->getDuration() <= 0.0) {
+        QTimer::singleShot(100,
+                this,
+                [this, tutorialId, location, deck, startSeconds, attempt] {
+                    seekTutorialTrack(tutorialId,
+                            location,
+                            deck,
+                            startSeconds,
+                            attempt + 1);
+                });
+        return;
+    }
+
+    const double position =
+            qBound(0.0, startSeconds / pTrack->getDuration(), 0.999);
+    ControlObject::set(ConfigKey(
+                               PlayerManager::groupForDeck(deck - 1),
+                               QStringLiteral("playposition")),
+            position);
+}
+
+void MixxxMainWindow::setTutorialMediaDropGuard(bool enabled) {
+    for (const QPointer<QObject>& object : std::as_const(m_tutorialDropGuardedObjects)) {
+        if (object) {
+            object->removeEventFilter(this);
+        }
+    }
+    m_tutorialDropGuardedObjects.clear();
+    if (!enabled || !m_pCentralWidget) {
+        return;
+    }
+
+    QList<QObject*> objects{m_pCentralWidget};
+    objects.append(m_pCentralWidget->findChildren<QObject*>());
+    for (QObject* pObject : std::as_const(objects)) {
+        pObject->installEventFilter(this);
+        m_tutorialDropGuardedObjects.append(pObject);
     }
 }
 
@@ -1864,12 +1899,6 @@ void MixxxMainWindow::handleTutorialControlValue(double value) {
             completeTutorialStep();
         }
         break;
-    case TutorialAction::TrackReload:
-        if (qAbs(value - m_tutorialControlBaseline) >=
-                guideStep.changeThreshold) {
-            completeTutorialStep();
-        }
-        break;
     case TutorialAction::Acknowledge:
     case TutorialAction::Timed:
     case TutorialAction::PlaybackWait:
@@ -1993,7 +2022,7 @@ void MixxxMainWindow::finishTutorialSession() {
     clearTutorialStateGuards();
 
     const QString title = tr("All done!  ✓");
-    const QString detail = tr("You finished the lesson. Keep practicing freely with this focused layout—your songs, controls, and settings will stay exactly as they are.");
+    const QString detail = tr("You finished the lesson. Keep practicing with the fixed tutorial tracks, or return to the menu to choose another lesson.");
     m_pTutorialGuideLabel->setText(title);
     m_pTutorialCheckNextAction->setVisible(false);
     if (m_pTutorialFocusOverlay) {
@@ -2009,7 +2038,7 @@ void MixxxMainWindow::finishTutorialSession() {
             m_pTutorialFocusOverlay->hide();
         }
         m_pTutorialGuideLabel->setText(
-                tr("FREE PLAY  ·  Lesson complete — practice with these controls"));
+                tr("PRACTICE  ·  Lesson complete — tutorial music remains locked"));
         m_pTutorialGuideLabel->show();
     });
 }
@@ -2022,6 +2051,7 @@ void MixxxMainWindow::resetTutorialSession() {
         m_pTutorialStateTimer->stop();
     }
     clearTutorialStateGuards();
+    setTutorialMediaDropGuard(false);
     m_pTutorialActionControl.reset();
     m_tutorialGuideStep = 0;
     m_tutorialStepCompleted = false;
@@ -3039,6 +3069,12 @@ void MixxxMainWindow::tryParseAndSetDefaultStyleSheet() {
 
 /// Catch ToolTip and WindowStateChange events
 bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
+    if (!m_activeTutorialId.isEmpty() &&
+            (event->type() == QEvent::DragEnter ||
+                    event->type() == QEvent::DragMove ||
+                    event->type() == QEvent::Drop)) {
+        return true;
+    }
     if (event->type() == QEvent::ToolTip) {
         // Guided lessons provide their own contextual coaching. Suppress the
         // skin's legacy hover text during the lesson and its focused free play.

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "tracks": [
+    {
+      "id": "neon-current",
+      "title": "Neon Current",
+      "artist": "LeetDJ Training Band",
+      "file": "audio/neon-current.mp3",
+      "bpm": 124,
+      "durationSeconds": 96,
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "glass-horizon",
+      "title": "Glass Horizon",
+      "artist": "LeetDJ Training Band",
+      "file": "audio/glass-horizon.mp3",
+      "bpm": 128,
+      "durationSeconds": 96,
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "solar-circuit",
+      "title": "Solar Circuit",
+      "artist": "LeetDJ Training Band",
+      "file": "audio/solar-circuit.mp3",
+      "bpm": 126,
+      "durationSeconds": 96,
+      "license": "CC0-1.0"
+    }
+  ],
+  "tutorials": {
+    "level-zero": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 8 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 8 }
+      ]
+    },
+    "crossfader": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 16 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 16 }
+      ]
+    },
+    "channel-faders": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 24 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 24 }
+      ]
+    },
+    "bass-eq": {
+      "decks": [
+        { "deck": 1, "track": "solar-circuit", "startSeconds": 32 }
+      ]
+    },
+    "cueing": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 40 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 40 }
+      ]
+    },
+    "beatmatching": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 16 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 16 }
+      ]
+    },
+    "looping": {
+      "decks": [
+        { "deck": 1, "track": "solar-circuit", "startSeconds": 48 }
+      ]
+    },
+    "filter-sweep": {
+      "decks": [
+        { "deck": 1, "track": "neon-current", "startSeconds": 64 },
+        { "deck": 2, "track": "glass-horizon", "startSeconds": 64 }
+      ]
+    }
+  }
+}
