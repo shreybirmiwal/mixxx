@@ -15,7 +15,7 @@
 namespace {
 constexpr int kHomeWidth = 1080;
 constexpr int kHomeHeight = 760;
-constexpr int kHomeMinimumWidth = 760;
+constexpr int kHomeMinimumWidth = 820;
 constexpr int kHomeMinimumHeight = 560;
 } // namespace
 
@@ -28,67 +28,133 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
 
     setStyleSheet(QStringLiteral(R"(
         QWidget#tutorialHomePage {
-            background: #0b0d12;
-            color: #f7f8fb;
+            background: #090d12;
+            color: #e6edf3;
+        }
+        QFrame#sidebar {
+            background: #0d1219;
+            border-right: 1px solid #1f2933;
         }
         QLabel#brand {
-            color: #a78bfa;
+            color: #f0f6fc;
+            font-size: 23px;
+            font-weight: 900;
+        }
+        QLabel#brandAccent {
+            color: #38d996;
+            font-size: 23px;
+            font-weight: 900;
+        }
+        QLabel#betaBadge {
+            background: #123126;
+            border: 1px solid #235841;
+            border-radius: 5px;
+            color: #62e6ad;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 3px 6px;
+        }
+        QLabel#sidebarCaption {
+            color: #667382;
+            font-size: 10px;
+            font-weight: 800;
+        }
+        QFrame#navSelected {
+            background: #14251f;
+            border: 1px solid #214b39;
+            border-radius: 8px;
+        }
+        QLabel#navSelectedLabel {
+            color: #76e8b7;
             font-size: 13px;
-            font-weight: 800;
-            letter-spacing: 2px;
+            font-weight: 750;
         }
-        QLabel#title {
-            color: #ffffff;
-            font-size: 38px;
-            font-weight: 800;
-        }
-        QLabel#subtitle {
-            color: #a5adbd;
-            font-size: 16px;
-        }
-        QPushButton#updatesButton {
-            background: #191d27;
-            border: 1px solid #303645;
-            border-radius: 10px;
-            color: #e8eaf0;
-            font-size: 14px;
-            font-weight: 700;
-            padding: 10px 16px;
-        }
-        QPushButton#updatesButton:hover {
-            background: #232938;
-            border-color: #7c5cff;
-        }
-        QLabel#updateStatus {
-            color: #b9c1d1;
+        QLabel[navItem="true"] {
+            color: #748190;
             font-size: 13px;
-            padding: 8px 0;
+            padding: 9px 11px;
         }
-        QFrame#freePlayCard {
-            background: #161a23;
-            border: 1px solid #303746;
-            border-radius: 18px;
+        QFrame#sidebarStats {
+            background: #101720;
+            border: 1px solid #202b37;
+            border-radius: 9px;
         }
-        QLabel#freePlayTitle {
-            color: #ffffff;
-            font-size: 22px;
-            font-weight: 800;
+        QLabel#sidebarStatsTitle {
+            color: #d8e0e8;
+            font-size: 12px;
+            font-weight: 750;
         }
-        QLabel#freePlayDescription {
-            color: #aab2c2;
-            font-size: 14px;
+        QLabel#sidebarStatsCopy, QLabel#sidebarFooter {
+            color: #718090;
+            font-size: 11px;
         }
         QPushButton#freePlayButton {
-            background: #6847ed;
-            border: 1px solid #896fff;
-            border-radius: 11px;
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 800;
-            padding: 12px 20px;
+            background: #18212c;
+            border: 1px solid #344151;
+            border-radius: 8px;
+            color: #dce5ee;
+            font-size: 12px;
+            font-weight: 750;
+            padding: 9px 12px;
+            text-align: left;
         }
         QPushButton#freePlayButton:hover {
-            background: #795af2;
+            background: #202c38;
+            border-color: #526276;
+        }
+        QWidget#mainPanel {
+            background: #090d12;
+        }
+        QLabel#eyebrow {
+            color: #38d996;
+            font-size: 10px;
+            font-weight: 850;
+        }
+        QLabel#title {
+            color: #f0f6fc;
+            font-size: 28px;
+            font-weight: 850;
+        }
+        QLabel#subtitle {
+            color: #8492a1;
+            font-size: 13px;
+        }
+        QPushButton#updatesButton {
+            background: transparent;
+            border: 1px solid #293440;
+            border-radius: 7px;
+            color: #9ca9b7;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 7px 11px;
+        }
+        QPushButton#updatesButton:hover {
+            background: #151c24;
+            border-color: #445363;
+            color: #dce5ee;
+        }
+        QLabel#updateStatus {
+            background: #101b18;
+            border: 1px solid #214b39;
+            border-radius: 7px;
+            color: #8eddb9;
+            font-size: 11px;
+            padding: 8px 10px;
+        }
+        QFrame#courseSummary {
+            background: #0f151d;
+            border: 1px solid #202a35;
+            border-radius: 9px;
+        }
+        QLabel[summaryValue="true"] {
+            color: #e6edf3;
+            font-size: 15px;
+            font-weight: 800;
+        }
+        QLabel[summaryLabel="true"] {
+            color: #687686;
+            font-size: 10px;
+            font-weight: 700;
         }
         QScrollArea {
             background: transparent;
@@ -97,136 +163,163 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
         QWidget#scrollContent {
             background: transparent;
         }
+        QScrollBar:vertical {
+            background: #0b1016;
+            border: 0;
+            margin: 0;
+            width: 8px;
+        }
+        QScrollBar::handle:vertical {
+            background: #344250;
+            border-radius: 4px;
+            min-height: 40px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #475869;
+        }
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {
+            height: 0;
+        }
+        QScrollBar::add-page:vertical,
+        QScrollBar::sub-page:vertical {
+            background: transparent;
+        }
         QToolButton[sectionHeader="true"] {
-            background: #141821;
-            border: 1px solid #262c39;
-            border-radius: 14px;
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 800;
-            padding: 16px 18px;
+            background: #0f151d;
+            border: 1px solid #222d38;
+            border-radius: 9px;
+            color: #dfe7ef;
+            font-size: 14px;
+            font-weight: 750;
+            padding: 12px 14px;
             text-align: left;
         }
         QToolButton[sectionHeader="true"]:hover {
-            background: #1a1f2b;
-            border-color: #6847ed;
+            background: #131b24;
+            border-color: #344352;
         }
         QFrame[sectionBody="true"] {
-            background: #10131a;
-            border: 1px solid #202632;
-            border-radius: 14px;
+            background: transparent;
+            border: 0;
         }
         QFrame[lessonCard="true"] {
-            background: #191d27;
-            border: 1px solid #292f3c;
-            border-radius: 12px;
+            background: #0f151d;
+            border: 1px solid #202b36;
+            border-radius: 8px;
+        }
+        QFrame[lessonCard="true"]:hover {
+            background: #121a23;
+            border-color: #344452;
         }
         QLabel[levelBadge="true"] {
-            background: #2b2152;
-            border: 1px solid #6847ed;
-            border-radius: 9px;
-            color: #cfc2ff;
-            font-size: 12px;
-            font-weight: 900;
-            padding: 7px 9px;
+            background: #13271f;
+            border: 1px solid #286148;
+            border-radius: 17px;
+            color: #64e3aa;
+            font-size: 11px;
+            font-weight: 850;
         }
         QLabel[lessonTitle="true"] {
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: 800;
+            color: #e6edf3;
+            font-size: 13px;
+            font-weight: 750;
         }
         QLabel[lessonDescription="true"] {
-            color: #aab2c2;
-            font-size: 13px;
+            color: #7c8997;
+            font-size: 11px;
         }
         QLabel[lessonMeta="true"] {
-            color: #a78bfa;
-            font-size: 12px;
-            font-weight: 750;
+            color: #4eaf84;
+            font-size: 9px;
+            font-weight: 800;
         }
         QPushButton[startLesson="true"] {
-            background: #6847ed;
-            border: 1px solid #896fff;
-            border-radius: 9px;
-            color: white;
-            font-size: 13px;
+            background: #153d2e;
+            border: 1px solid #2c7a58;
+            border-radius: 7px;
+            color: #80ebbc;
+            font-size: 11px;
             font-weight: 800;
-            padding: 10px 15px;
+            padding: 8px 13px;
         }
         QPushButton[startLesson="true"]:hover {
-            background: #795af2;
+            background: #1d503c;
+            border-color: #48ae80;
         }
         QLabel[comingSoon="true"] {
-            background: #202530;
-            border: 1px solid #343b4a;
-            border-radius: 8px;
-            color: #7f899a;
-            font-size: 12px;
+            color: #596674;
+            font-size: 10px;
             font-weight: 750;
-            padding: 8px 11px;
+            padding: 7px 10px;
         }
     )"));
 
-    auto pRootLayout = make_parented<QVBoxLayout>(this);
-    pRootLayout->setContentsMargins(32, 28, 32, 28);
-    pRootLayout->setSpacing(22);
+    auto pRootLayout = make_parented<QHBoxLayout>(this);
+    pRootLayout->setContentsMargins(0, 0, 0, 0);
+    pRootLayout->setSpacing(0);
 
-    auto pTopBarWidget = make_parented<QWidget>(this);
-    auto pTopBar = make_parented<QHBoxLayout>(pTopBarWidget);
-    pTopBar->setContentsMargins(0, 0, 0, 0);
-    auto pBrand = make_parented<QLabel>(tr("MIXXX  /  LEARN"), pTopBarWidget);
+    auto pSidebar = make_parented<QFrame>(this);
+    pSidebar->setObjectName(QStringLiteral("sidebar"));
+    pSidebar->setFixedWidth(205);
+    auto pSidebarLayout = make_parented<QVBoxLayout>(pSidebar);
+    pSidebarLayout->setContentsMargins(19, 22, 19, 18);
+    pSidebarLayout->setSpacing(10);
+
+    auto pBrandRow = make_parented<QWidget>(pSidebar);
+    auto pBrandLayout = make_parented<QHBoxLayout>(pBrandRow);
+    pBrandLayout->setContentsMargins(4, 0, 0, 0);
+    pBrandLayout->setSpacing(0);
+    auto pBrand = make_parented<QLabel>(tr("Leet"), pBrandRow);
     pBrand->setObjectName(QStringLiteral("brand"));
-    pTopBar->addWidget(pBrand);
-    pTopBar->addStretch();
+    auto pBrandAccent = make_parented<QLabel>(tr("DJ"), pBrandRow);
+    pBrandAccent->setObjectName(QStringLiteral("brandAccent"));
+    auto pBeta = make_parented<QLabel>(tr("BETA"), pBrandRow);
+    pBeta->setObjectName(QStringLiteral("betaBadge"));
+    pBrandLayout->addWidget(pBrand);
+    pBrandLayout->addWidget(pBrandAccent);
+    pBrandLayout->addSpacing(8);
+    pBrandLayout->addWidget(pBeta);
+    pBrandLayout->addStretch();
+    pSidebarLayout->addWidget(pBrandRow);
+    pSidebarLayout->addSpacing(24);
 
-    auto pUpdatesButton = make_parented<QPushButton>(tr("Updates"), pTopBarWidget);
-    pUpdatesButton->setObjectName(QStringLiteral("updatesButton"));
-    pUpdatesButton->setAccessibleName(tr("Updates"));
-    pUpdatesButton->setCursor(Qt::PointingHandCursor);
-    connect(pUpdatesButton,
-            &QPushButton::clicked,
-            this,
-            &TutorialHomePage::showUpdateStatus);
-    pTopBar->addWidget(pUpdatesButton);
-    pRootLayout->addWidget(pTopBarWidget);
+    auto pLearnCaption = make_parented<QLabel>(tr("LEARN"), pSidebar);
+    pLearnCaption->setObjectName(QStringLiteral("sidebarCaption"));
+    pSidebarLayout->addWidget(pLearnCaption);
 
-    auto pUpdateStatus = make_parented<QLabel>(this);
-    m_pUpdateStatus = pUpdateStatus.get();
-    m_pUpdateStatus->setObjectName(QStringLiteral("updateStatus"));
-    m_pUpdateStatus->setWordWrap(true);
-    m_pUpdateStatus->hide();
-    pRootLayout->addWidget(pUpdateStatus);
+    auto pSelectedNav = make_parented<QFrame>(pSidebar);
+    pSelectedNav->setObjectName(QStringLiteral("navSelected"));
+    auto pSelectedNavLayout = make_parented<QHBoxLayout>(pSelectedNav);
+    pSelectedNavLayout->setContentsMargins(11, 9, 11, 9);
+    auto pSelectedNavLabel = make_parented<QLabel>(tr("Roadmap"), pSelectedNav);
+    pSelectedNavLabel->setObjectName(QStringLiteral("navSelectedLabel"));
+    pSelectedNavLayout->addWidget(pSelectedNavLabel);
+    pSidebarLayout->addWidget(pSelectedNav);
 
-    auto pTitle = make_parented<QLabel>(tr("Learn to DJ, one skill at a time"), this);
-    pTitle->setObjectName(QStringLiteral("title"));
-    pRootLayout->addWidget(pTitle);
+    auto pPracticeNav = make_parented<QLabel>(tr("Practice"), pSidebar);
+    pPracticeNav->setProperty("navItem", true);
+    auto pProgressNav = make_parented<QLabel>(tr("Progress"), pSidebar);
+    pProgressNav->setProperty("navItem", true);
+    pSidebarLayout->addWidget(pPracticeNav);
+    pSidebarLayout->addWidget(pProgressNav);
+    pSidebarLayout->addStretch();
 
-    auto pSubtitle = make_parented<QLabel>(
-            tr("A step-by-step DJ course. Each lesson watches what you do, checks the skill, and automatically moves forward when you get it right."), this);
-    pSubtitle->setObjectName(QStringLiteral("subtitle"));
-    pSubtitle->setWordWrap(true);
-    pRootLayout->addWidget(pSubtitle);
+    auto pStats = make_parented<QFrame>(pSidebar);
+    pStats->setObjectName(QStringLiteral("sidebarStats"));
+    auto pStatsLayout = make_parented<QVBoxLayout>(pStats);
+    pStatsLayout->setContentsMargins(11, 10, 11, 10);
+    pStatsLayout->setSpacing(3);
+    auto pStatsTitle = make_parented<QLabel>(tr("6 interactive lessons"), pStats);
+    pStatsTitle->setObjectName(QStringLiteral("sidebarStatsTitle"));
+    auto pStatsCopy = make_parented<QLabel>(tr("A guided path from first track to first transition."), pStats);
+    pStatsCopy->setObjectName(QStringLiteral("sidebarStatsCopy"));
+    pStatsCopy->setWordWrap(true);
+    pStatsLayout->addWidget(pStatsTitle);
+    pStatsLayout->addWidget(pStatsCopy);
+    pSidebarLayout->addWidget(pStats);
 
-    auto pFreePlayCard = make_parented<QFrame>(this);
-    pFreePlayCard->setObjectName(QStringLiteral("freePlayCard"));
-    auto pFreePlayLayout = make_parented<QHBoxLayout>(pFreePlayCard);
-    pFreePlayLayout->setContentsMargins(22, 18, 18, 18);
-    pFreePlayLayout->setSpacing(18);
-
-    auto pFreePlayCopyWidget = make_parented<QWidget>(pFreePlayCard);
-    auto pFreePlayCopy = make_parented<QVBoxLayout>(pFreePlayCopyWidget);
-    pFreePlayCopy->setContentsMargins(0, 0, 0, 0);
-    pFreePlayCopy->setSpacing(4);
-    auto pFreePlayTitle = make_parented<QLabel>(tr("Free Play"), pFreePlayCard);
-    pFreePlayTitle->setObjectName(QStringLiteral("freePlayTitle"));
-    auto pFreePlayDescription = make_parented<QLabel>(
-            tr("Open the full DJ workspace with no guided steps."), pFreePlayCard);
-    pFreePlayDescription->setObjectName(QStringLiteral("freePlayDescription"));
-    pFreePlayCopy->addWidget(pFreePlayTitle);
-    pFreePlayCopy->addWidget(pFreePlayDescription);
-    pFreePlayLayout->addWidget(pFreePlayCopyWidget, 1);
-
-    auto pFreePlayButton = make_parented<QPushButton>(tr("Open decks  →"), pFreePlayCard);
+    auto pFreePlayButton = make_parented<QPushButton>(tr("Free Play"), pSidebar);
     pFreePlayButton->setObjectName(QStringLiteral("freePlayButton"));
     pFreePlayButton->setAccessibleName(tr("Free Play"));
     pFreePlayButton->setCursor(Qt::PointingHandCursor);
@@ -236,10 +329,82 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             [this] {
                 emit openDjWorkspaceRequested(QString());
             });
-    pFreePlayLayout->addWidget(pFreePlayButton);
-    pRootLayout->addWidget(pFreePlayCard);
+    pSidebarLayout->addWidget(pFreePlayButton);
+    auto pSidebarFooter = make_parented<QLabel>(tr("Built for deliberate practice"), pSidebar);
+    pSidebarFooter->setObjectName(QStringLiteral("sidebarFooter"));
+    pSidebarLayout->addWidget(pSidebarFooter);
+    pRootLayout->addWidget(pSidebar);
 
-    auto pScrollArea = make_parented<QScrollArea>(this);
+    auto pMainPanel = make_parented<QWidget>(this);
+    pMainPanel->setObjectName(QStringLiteral("mainPanel"));
+    auto pMainLayout = make_parented<QVBoxLayout>(pMainPanel);
+    pMainLayout->setContentsMargins(30, 24, 30, 24);
+    pMainLayout->setSpacing(10);
+
+    auto pTopBarWidget = make_parented<QWidget>(pMainPanel);
+    auto pTopBar = make_parented<QHBoxLayout>(pTopBarWidget);
+    pTopBar->setContentsMargins(0, 0, 0, 0);
+    auto pHeadingWidget = make_parented<QWidget>(pTopBarWidget);
+    auto pHeadingLayout = make_parented<QVBoxLayout>(pHeadingWidget);
+    pHeadingLayout->setContentsMargins(0, 0, 0, 0);
+    pHeadingLayout->setSpacing(3);
+    auto pEyebrow = make_parented<QLabel>(tr("BEGINNER PATH"), pHeadingWidget);
+    pEyebrow->setObjectName(QStringLiteral("eyebrow"));
+    auto pTitle = make_parented<QLabel>(tr("DJ Foundations"), pHeadingWidget);
+    pTitle->setObjectName(QStringLiteral("title"));
+    auto pSubtitle = make_parented<QLabel>(
+            tr("Learn one skill at a time. LeetDJ checks each move as you practice."), pHeadingWidget);
+    pSubtitle->setObjectName(QStringLiteral("subtitle"));
+    pSubtitle->setWordWrap(true);
+    pHeadingLayout->addWidget(pEyebrow);
+    pHeadingLayout->addWidget(pTitle);
+    pHeadingLayout->addWidget(pSubtitle);
+    pTopBar->addWidget(pHeadingWidget, 1);
+
+    auto pUpdatesButton = make_parented<QPushButton>(tr("Check for updates"), pTopBarWidget);
+    pUpdatesButton->setObjectName(QStringLiteral("updatesButton"));
+    pUpdatesButton->setAccessibleName(tr("Updates"));
+    pUpdatesButton->setCursor(Qt::PointingHandCursor);
+    connect(pUpdatesButton,
+            &QPushButton::clicked,
+            this,
+            &TutorialHomePage::showUpdateStatus);
+    pTopBar->addWidget(pUpdatesButton);
+    pMainLayout->addWidget(pTopBarWidget);
+
+    auto pUpdateStatus = make_parented<QLabel>(pMainPanel);
+    m_pUpdateStatus = pUpdateStatus.get();
+    m_pUpdateStatus->setObjectName(QStringLiteral("updateStatus"));
+    m_pUpdateStatus->setWordWrap(true);
+    m_pUpdateStatus->hide();
+    pMainLayout->addWidget(pUpdateStatus);
+
+    auto pCourseSummary = make_parented<QFrame>(pMainPanel);
+    pCourseSummary->setObjectName(QStringLiteral("courseSummary"));
+    auto pCourseSummaryLayout = make_parented<QHBoxLayout>(pCourseSummary);
+    pCourseSummaryLayout->setContentsMargins(15, 10, 15, 10);
+    pCourseSummaryLayout->setSpacing(30);
+    const auto addSummary = [&pCourseSummaryLayout, &pCourseSummary](
+                                    const QString& value, const QString& label) {
+        auto pWidget = make_parented<QWidget>(pCourseSummary);
+        auto pLayout = make_parented<QVBoxLayout>(pWidget);
+        pLayout->setContentsMargins(0, 0, 0, 0);
+        pLayout->setSpacing(0);
+        auto pValue = make_parented<QLabel>(value, pWidget);
+        pValue->setProperty("summaryValue", true);
+        auto pLabel = make_parented<QLabel>(label, pWidget);
+        pLabel->setProperty("summaryLabel", true);
+        pLayout->addWidget(pValue);
+        pLayout->addWidget(pLabel);
+        pCourseSummaryLayout->addWidget(pWidget);
+    };
+    addSummary(tr("9"), tr("SKILLS"));
+    addSummary(tr("6"), tr("INTERACTIVE"));
+    addSummary(tr("~38 min"), tr("GUIDED PRACTICE"));
+    pCourseSummaryLayout->addStretch();
+    pMainLayout->addWidget(pCourseSummary);
+
+    auto pScrollArea = make_parented<QScrollArea>(pMainPanel);
     pScrollArea->setObjectName(QStringLiteral("tutorialScrollArea"));
     pScrollArea->setWidgetResizable(true);
     pScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -301,14 +466,15 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
 
     pTutorialLayout->addStretch();
     pScrollArea->setWidget(pScrollContent);
-    pRootLayout->addWidget(pScrollArea, 1);
+    pMainLayout->addWidget(pScrollArea, 1);
+    pRootLayout->addWidget(pMainPanel, 1);
 }
 
 void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
         const QString& title,
         const QString& description,
         const QList<TutorialEntry>& tutorials) {
-    const bool expandedByDefault = pLayout->count() == 0;
+    const bool expandedByDefault = true;
     auto pSection = make_parented<QFrame>(pLayout->parentWidget());
     auto pSectionLayout = make_parented<QVBoxLayout>(pSection);
     pSectionLayout->setContentsMargins(0, 0, 0, 0);
@@ -319,7 +485,7 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
     pHeader->setProperty("sectionHeader", true);
     pHeader->setAccessibleName(title);
     pHeader->setAccessibleDescription(description);
-    pHeader->setText(QStringLiteral("%1\n%2").arg(title, description));
+    pHeader->setText(title);
     pHeader->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     pHeader->setArrowType(
             expandedByDefault ? Qt::DownArrow : Qt::RightArrow);
@@ -348,6 +514,7 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
         auto pLevel = make_parented<QLabel>(tutorial.level, pCard);
         pLevel->setProperty("levelBadge", true);
         pLevel->setAlignment(Qt::AlignCenter);
+        pLevel->setFixedSize(34, 34);
         pCardLayout->addWidget(pLevel);
 
         auto pCopyWidget = make_parented<QWidget>(pCard);
@@ -402,8 +569,8 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
 
 void TutorialHomePage::showUpdateStatus() {
     m_pUpdateStatus->setText(
-            tr("You are running the local Mixxx %1 build. Pull the fork's upstream "
-               "remote and rebuild to install source updates.")
+            tr("LeetDJ %1 is running from your local build. Source updates can be "
+               "installed from this project's repository.")
                     .arg(QCoreApplication::applicationVersion()));
     m_pUpdateStatus->show();
 }

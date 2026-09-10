@@ -1361,6 +1361,7 @@ void MixxxMainWindow::showTutorialHome() {
         pAction->setVisible(true);
     }
     m_pMenuBar->show();
+    setWindowTitle(tr("LeetDJ"));
 
     QWidget* pDjWorkspace = takeCentralWidget();
     VERIFY_OR_DEBUG_ASSERT(pDjWorkspace == m_pCentralWidget) {
