@@ -130,6 +130,34 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             background: #242a38;
             border-color: #8b72ff;
         }
+        QFrame[tutorialModeCard="true"] {
+            background: #191d27;
+            border: 1px solid #292f3c;
+            border-radius: 12px;
+        }
+        QLabel[tutorialModeTitle="true"] {
+            color: #f6f7fa;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        QPushButton[tutorialMode="true"] {
+            border-radius: 9px;
+            color: white;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 9px 14px;
+        }
+        QPushButton[tutorialMode="true"][mode="learn"] {
+            background: #6847ed;
+            border: 1px solid #896fff;
+        }
+        QPushButton[tutorialMode="true"][mode="eval"] {
+            background: #202633;
+            border: 1px solid #465066;
+        }
+        QPushButton[tutorialMode="true"]:hover {
+            border-color: #a78bfa;
+        }
     )"));
 
     auto pRootLayout = make_parented<QVBoxLayout>(this);
@@ -167,7 +195,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     pRootLayout->addWidget(pTitle);
 
     auto pSubtitle = make_parented<QLabel>(
-            tr("Start with a guided lesson or jump straight onto the decks."), this);
+            tr("Learn pauses and waits for every move. Eval removes the hints and scores your run from 1–3 stars."), this);
     pSubtitle->setObjectName(QStringLiteral("subtitle"));
     pSubtitle->setWordWrap(true);
     pRootLayout->addWidget(pSubtitle);
@@ -199,7 +227,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
             &QPushButton::clicked,
             this,
             [this] {
-                emit openDjWorkspaceRequested(QString());
+                emit openDjWorkspaceRequested(QString(), QStringLiteral("free-play"));
             });
     pFreePlayLayout->addWidget(pFreePlayButton);
     pRootLayout->addWidget(pFreePlayCard);
@@ -283,6 +311,55 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
     pBodyLayout->setSpacing(9);
 
     for (const TutorialEntry& tutorial : tutorials) {
+        const bool hasInteractiveModes =
+                tutorial.id == QStringLiteral("level-zero") ||
+                tutorial.id == QStringLiteral("bass-eq") ||
+                tutorial.id == QStringLiteral("looping");
+        if (hasInteractiveModes) {
+            auto pModeCard = make_parented<QFrame>(pBody);
+            pModeCard->setProperty("tutorialModeCard", true);
+            auto pModeLayout = make_parented<QHBoxLayout>(pModeCard);
+            pModeLayout->setContentsMargins(18, 10, 10, 10);
+            pModeLayout->setSpacing(8);
+            auto pTitle = make_parented<QLabel>(tutorial.title, pModeCard);
+            pTitle->setProperty("tutorialModeTitle", true);
+            pModeLayout->addWidget(pTitle, 1);
+
+            auto pLearn = make_parented<QPushButton>(tr("Learn"), pModeCard);
+            pLearn->setObjectName(QStringLiteral("tutorialLearnButton"));
+            pLearn->setProperty("tutorialCard", true);
+            pLearn->setProperty("tutorialId", tutorial.id);
+            pLearn->setProperty("tutorialMode", true);
+            pLearn->setProperty("mode", QStringLiteral("learn"));
+            pLearn->setAccessibleName(tr("Learn: %1").arg(tutorial.title));
+            pLearn->setCursor(Qt::PointingHandCursor);
+            connect(pLearn,
+                    &QPushButton::clicked,
+                    this,
+                    [this, tutorialId = tutorial.id] {
+                        emit openDjWorkspaceRequested(
+                                tutorialId, QStringLiteral("learn"));
+                    });
+            pModeLayout->addWidget(pLearn);
+
+            auto pEval = make_parented<QPushButton>(tr("Eval"), pModeCard);
+            pEval->setObjectName(QStringLiteral("tutorialEvalButton"));
+            pEval->setProperty("tutorialMode", true);
+            pEval->setProperty("tutorialId", tutorial.id);
+            pEval->setProperty("mode", QStringLiteral("eval"));
+            pEval->setAccessibleName(tr("Evaluate: %1").arg(tutorial.title));
+            pEval->setCursor(Qt::PointingHandCursor);
+            connect(pEval,
+                    &QPushButton::clicked,
+                    this,
+                    [this, tutorialId = tutorial.id] {
+                        emit openDjWorkspaceRequested(
+                                tutorialId, QStringLiteral("eval"));
+                    });
+            pModeLayout->addWidget(pEval);
+            pBodyLayout->addWidget(pModeCard);
+            continue;
+        }
         auto pTutorialButton = make_parented<QPushButton>(tutorial.title, pBody);
         pTutorialButton->setObjectName(QStringLiteral("tutorialButton"));
         pTutorialButton->setProperty("tutorialCard", true);
@@ -293,7 +370,8 @@ void TutorialHomePage::addTutorialSection(QVBoxLayout* pLayout,
                 &QPushButton::clicked,
                 this,
                 [this, tutorialId = tutorial.id] {
-                    emit openDjWorkspaceRequested(tutorialId);
+                    emit openDjWorkspaceRequested(
+                            tutorialId, QStringLiteral("learn"));
                 });
         pBodyLayout->addWidget(pTutorialButton);
     }

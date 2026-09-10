@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QList>
 #include <QPointer>
 #include <QString>
 #include <memory>
@@ -11,6 +12,7 @@
 #include "util/parented_ptr.h"
 
 class ControlObject;
+class ControlProxy;
 class DlgDeveloperTools;
 class DlgPreferences;
 class DlgKeywheel;
@@ -21,6 +23,7 @@ class QPushButton;
 class TutorialHomePage;
 class TutorialFocusOverlay;
 class QToolBar;
+class QTimer;
 class VisualsManager;
 class WMainMenuBar;
 struct LibraryScanResultSummary;
@@ -104,7 +107,8 @@ class MixxxMainWindow : public QMainWindow {
 
   private slots:
     void slotTooltipModeChanged(mixxx::preferences::Tooltips tt);
-    void showDjWorkspace(const QString& tutorialId);
+    void showDjWorkspace(
+            const QString& tutorialId, const QString& tutorialMode);
 
   signals:
     void skinLoaded();
@@ -129,6 +133,13 @@ class MixxxMainWindow : public QMainWindow {
     bool confirmExit();
     void loadTutorialDemoTracks(const QString& tutorialId);
     void showTutorialGuideStep(int step);
+    void armTutorialStep();
+    void handleTutorialControlValue(double value);
+    void updateTutorialStepTimer();
+    void completeTutorialStep();
+    void finishTutorialSession();
+    void resetTutorialSession();
+    void pauseTutorialDecks();
     QWidget* findTutorialGuideTarget(const QString& objectName = {},
             const QString& within = {},
             const QString& tooltipId = {},
@@ -151,13 +162,20 @@ class MixxxMainWindow : public QMainWindow {
     QPointer<TutorialHomePage> m_pTutorialHomePage;
     parented_ptr<QToolBar> m_pTutorialToolBar;
     parented_ptr<QLabel> m_pTutorialGuideLabel;
-    parented_ptr<QPushButton> m_pTutorialGuidePrevious;
-    parented_ptr<QPushButton> m_pTutorialGuideNext;
+    parented_ptr<QTimer> m_pTutorialStepTimer;
     QPointer<TutorialFocusOverlay> m_pTutorialFocusOverlay;
     parented_ptr<mixxx::tutorial::VisibilityPanel> m_pTutorialVisibilityPanel;
     std::unique_ptr<mixxx::tutorial::VisibilityController> m_pTutorialVisibility;
     QString m_activeTutorialId;
+    QString m_activeTutorialMode;
     int m_tutorialGuideStep{0};
+    int m_tutorialStepElapsedMs{0};
+    int m_tutorialPlaybackWaitMs{0};
+    bool m_tutorialStepCompleted{false};
+    bool m_tutorialSawInactiveControl{false};
+    double m_tutorialControlBaseline{0.0};
+    QList<int> m_tutorialStepStars;
+    std::unique_ptr<ControlProxy> m_pTutorialActionControl;
     LaunchImage* m_pLaunchImage;
 #ifndef __APPLE__
     Qt::WindowStates m_prevState;

@@ -41,6 +41,7 @@ TEST(TutorialHomePageTest, ContainsScrollableTutorialSectionsAndActions) {
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("level-zero")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("bass-eq")));
     EXPECT_TRUE(tutorialIds.contains(QStringLiteral("looping")));
+    EXPECT_EQ(childrenWithProperty<QPushButton>(&home, "tutorialMode").size(), 6);
 }
 
 TEST(TutorialHomePageTest, SectionHeadersToggleTheirContent) {
@@ -66,7 +67,9 @@ TEST(TutorialHomePageTest, FreePlayAndTutorialsRequestTheDjWorkspace) {
     ASSERT_NE(pFreePlay, nullptr);
     pFreePlay->click();
     EXPECT_EQ(freePlaySpy.count(), 1);
-    EXPECT_TRUE(freePlaySpy.takeFirst().at(0).toString().isEmpty());
+    const QList<QVariant> freePlayRequest = freePlaySpy.takeFirst();
+    EXPECT_TRUE(freePlayRequest.at(0).toString().isEmpty());
+    EXPECT_EQ(freePlayRequest.at(1).toString(), QStringLiteral("free-play"));
 
     TutorialHomePage tutorialHome;
     QSignalSpy tutorialSpy(
@@ -78,7 +81,18 @@ TEST(TutorialHomePageTest, FreePlayAndTutorialsRequestTheDjWorkspace) {
     EXPECT_FALSE(tutorialId.isEmpty());
     tutorials.first()->click();
     EXPECT_EQ(tutorialSpy.count(), 1);
-    EXPECT_EQ(tutorialSpy.takeFirst().at(0).toString(), tutorialId);
+    const QList<QVariant> learnRequest = tutorialSpy.takeFirst();
+    EXPECT_EQ(learnRequest.at(0).toString(), tutorialId);
+    EXPECT_EQ(learnRequest.at(1).toString(), QStringLiteral("learn"));
+
+    auto* pEval = tutorialHome.findChild<QPushButton*>(
+            QStringLiteral("tutorialEvalButton"));
+    ASSERT_NE(pEval, nullptr);
+    pEval->click();
+    EXPECT_EQ(tutorialSpy.count(), 1);
+    const QList<QVariant> evalRequest = tutorialSpy.takeFirst();
+    EXPECT_FALSE(evalRequest.at(0).toString().isEmpty());
+    EXPECT_EQ(evalRequest.at(1).toString(), QStringLiteral("eval"));
 }
 
 TEST(TutorialHomePageTest, UpdatesAreReportedInsideThePage) {

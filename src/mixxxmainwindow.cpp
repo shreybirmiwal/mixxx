@@ -21,6 +21,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QUrl>
+#include <QtMath>
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QGLFormat>
@@ -51,6 +52,7 @@
 #include "broadcast/broadcastmanager.h"
 #endif
 #include "control/controlindicatortimer.h"
+#include "control/controlproxy.h"
 #include "library/library.h"
 #include "library/library_decl.h"
 #include "library/library_prefs.h"
@@ -92,6 +94,14 @@ namespace {
 const ConfigKey kHideMenuBarConfigKey = ConfigKey("[Config]", "hide_menubar");
 const ConfigKey kMenuBarHintConfigKey = ConfigKey("[Config]", "show_menubar_hint");
 
+enum class TutorialAction {
+    Timed,
+    ControlChanged,
+    ControlPositive,
+    TrackReload,
+    PlaybackWait,
+};
+
 struct TutorialGuideStep {
     TutorialGuideStep(QString title,
             QString detail,
@@ -99,14 +109,28 @@ struct TutorialGuideStep {
             QString within = {},
             QString tooltipId = {},
             QString controlKey = {},
-            QString widgetType = {})
+            QString widgetType = {},
+            TutorialAction action = TutorialAction::Timed,
+            QString actionGroup = {},
+            QString actionItem = {},
+            double changeThreshold = 0.01,
+            int waitMs = 2200,
+            bool pauseOnEnter = false,
+            int listenAfterMs = 650)
             : title(std::move(title)),
               detail(std::move(detail)),
               objectName(std::move(objectName)),
               within(std::move(within)),
               tooltipId(std::move(tooltipId)),
               controlKey(std::move(controlKey)),
-              widgetType(std::move(widgetType)) {
+              widgetType(std::move(widgetType)),
+              action(action),
+              actionGroup(std::move(actionGroup)),
+              actionItem(std::move(actionItem)),
+              changeThreshold(changeThreshold),
+              waitMs(waitMs),
+              pauseOnEnter(pauseOnEnter),
+              listenAfterMs(listenAfterMs) {
     }
 
     QString title;
@@ -116,6 +140,13 @@ struct TutorialGuideStep {
     QString tooltipId;
     QString controlKey;
     QString widgetType;
+    TutorialAction action;
+    QString actionGroup;
+    QString actionItem;
+    double changeThreshold;
+    int waitMs;
+    bool pauseOnEnter;
+    int listenAfterMs;
 };
 
 QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
@@ -123,114 +154,183 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
         return {
                 {QObject::tr("Pick two songs"),
                         QObject::tr("This is your music library. Pick any song and drag it onto the left deck. Then drag a different song onto the right deck."),
-                        QStringLiteral("LibraryContainer")},
+                        QStringLiteral("LibraryContainer"),
+                        {}, {}, {}, {}, TutorialAction::Timed, {}, {}, 0.01, 1800},
                 {QObject::tr("Load the left deck"),
                         QObject::tr("Drag a song from the library and drop it directly into this glowing title box. The example song will be replaced and its waveform will appear above."),
                         QStringLiteral("TitleText"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::TrackReload,
+                        QStringLiteral("[Channel1]"), QStringLiteral("track_loaded"),
+                        0.01, 0, true},
                 {QObject::tr("Load the right deck"),
                         QObject::tr("Now drag a different song into this right title box. A DJ uses two decks so the next song can be prepared while the first one plays."),
                         QStringLiteral("TitleText"),
-                        QStringLiteral("Deck2_Src")},
+                        QStringLiteral("Deck2_Src"),
+                        {}, {}, {}, TutorialAction::TrackReload,
+                        QStringLiteral("[Channel2]"), QStringLiteral("track_loaded"),
+                        0.01, 0, true},
                 {QObject::tr("Read the waveforms"),
                         QObject::tr("The colored shapes are pictures of the sound. The music moves through the center line, helping you see loud sections and upcoming changes."),
-                        QStringLiteral("WaveformsContainer")},
+                        QStringLiteral("WaveformsContainer"),
+                        {}, {}, {}, {}, TutorialAction::Timed, {}, {}, 0.01, 2400},
                 {QObject::tr("Play and pause"),
-                        QObject::tr("Press this button to start the left song. Press it again to pause. Try it now, then continue."),
+                        QObject::tr("Press this button to start the left song. The lesson detects it, lets you hear the track, and advances automatically."),
                         QStringLiteral("PlayDeck"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel1]"), QStringLiteral("play"),
+                        0.01, 0, true, 1800},
                 {QObject::tr("Adjust the tempo"),
                         QObject::tr("Drag this fader gently. Moving away from the center changes how fast the song plays. Return it to the center when you are done."),
                         QStringLiteral("RateSlider"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("rate"),
+                        0.005, 0, true, 1400},
                 {QObject::tr("Set a deck's volume"),
                         QObject::tr("This vertical fader controls how loudly the left deck reaches the audience. Up is louder; down is quieter."),
                         {},
                         {},
                         QStringLiteral("channel_volume"),
-                        QStringLiteral("[Channel1],volume")},
+                        QStringLiteral("[Channel1],volume"),
+                        {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("volume"),
+                        0.02, 0, true, 1400},
                 {QObject::tr("Blend with the crossfader"),
                         QObject::tr("Left plays only the left deck, right plays only the right deck, and the center blends both. Move it slowly from one side to the other to make your first transition."),
                         {},
                         {},
-                        QStringLiteral("crossfader")},
+                        QStringLiteral("crossfader"),
+                        {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Master]"), QStringLiteral("crossfader"),
+                        0.04, 0, true, 1800},
         };
     }
     if (tutorialId == QStringLiteral("bass-eq")) {
         return {
                 {QObject::tr("Load a song"),
                         QObject::tr("Choose a song you know well and drag it onto the left deck. Hearing a familiar song makes the tone controls easier to understand."),
-                        QStringLiteral("LibraryContainer")},
+                        QStringLiteral("LibraryContainer"),
+                        {}, {}, {}, {}, TutorialAction::TrackReload,
+                        QStringLiteral("[Channel1]"), QStringLiteral("track_loaded"),
+                        0.01, 0, true},
                 {QObject::tr("Start the music"),
                         QObject::tr("Press Play. Leave the song running while you test each knob so your ears can hear the change immediately."),
                         QStringLiteral("PlayDeck"),
-                        QStringLiteral("Deck1_Src")},
-                {QObject::tr("How to move a knob"),
-                        QObject::tr("Click this HIGH knob and drag up or down. The center position is neutral: it neither adds nor removes that part of the sound."),
-                        {},
-                        QStringLiteral("MixerChannel_2Decks_Left"),
-                        QStringLiteral("filterHigh")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel1]"), QStringLiteral("play"),
+                        0.01, 0, true, 1500},
+                {QObject::tr("Wait for the bright sounds"),
+                        QObject::tr("Keep listening until the next bright hi-hat or vocal phrase arrives. The lesson will move on at the right point in the song."),
+                        QStringLiteral("WaveformsContainer"),
+                        {}, {}, {}, {}, TutorialAction::PlaybackWait,
+                        QStringLiteral("[Channel1]"), QStringLiteral("play"),
+                        0.01, 4000, false, 300},
                 {QObject::tr("High frequencies"),
-                        QObject::tr("HIGH controls bright sounds such as hi-hats, cymbals, and crisp vocals. Turn it down and notice the track become darker; then return it to center."),
+                        QObject::tr("Click HIGH and drag down. It controls hi-hats, cymbals, and crisp vocals. Music is paused until you move it, then it resumes so you can hear the result."),
                         {},
                         QStringLiteral("MixerChannel_2Decks_Left"),
-                        QStringLiteral("filterHigh")},
+                        QStringLiteral("filterHigh"),
+                        {}, {}, TutorialAction::ControlChanged, {}, {},
+                        0.03, 0, true, 2400},
                 {QObject::tr("Mid frequencies"),
                         QObject::tr("MID contains much of the vocal, melody, and body of a track. Small changes are powerful. Turn it down, listen, then return it to center."),
                         {},
                         QStringLiteral("MixerChannel_2Decks_Left"),
-                        QStringLiteral("filterMid")},
+                        QStringLiteral("filterMid"),
+                        {}, {}, TutorialAction::ControlChanged, {}, {},
+                        0.03, 0, true, 2400},
                 {QObject::tr("Low frequencies"),
                         QObject::tr("LOW controls the kick drum and bass. DJs often lower the outgoing track's bass so two basslines do not clash. Try it, then reset to center."),
                         {},
                         QStringLiteral("MixerChannel_2Decks_Left"),
-                        QStringLiteral("filterLow")},
+                        QStringLiteral("filterLow"),
+                        {}, {}, TutorialAction::ControlChanged, {}, {},
+                        0.03, 0, true, 2400},
                 {QObject::tr("The filter knob"),
                         QObject::tr("Turn this filter clockwise for a high-pass sweep: low sounds disappear first. Turn it counterclockwise for a low-pass sweep: high sounds disappear first. Center is neutral."),
                         {},
                         QStringLiteral("MixerChannel_2Decks_Left"),
-                        QStringLiteral("QuickEffectRack_super1")},
+                        QStringLiteral("QuickEffectRack_super1"),
+                        {}, {}, TutorialAction::ControlChanged, {}, {},
+                        0.03, 0, true, 2400},
                 {QObject::tr("Practice a clean swap"),
-                        QObject::tr("With both songs playing, lower LOW on one deck while raising LOW on the other. Make small, slow movements and return every knob to center afterward."),
-                        QStringLiteral("MixerDecks")},
+                        QObject::tr("Make one more deliberate LOW adjustment. In a real mix, lower one bassline before bringing in the other so they do not clash."),
+                        {},
+                        QStringLiteral("MixerChannel_2Decks_Left"),
+                        QStringLiteral("filterLow"),
+                        {}, {}, TutorialAction::ControlChanged, {}, {},
+                        0.03, 0, true, 2400},
         };
     }
     if (tutorialId == QStringLiteral("looping")) {
         return {
                 {QObject::tr("Load one song"),
                         QObject::tr("Pick a song with a clear drum beat and drag it onto the left deck."),
-                        QStringLiteral("LibraryContainer")},
+                        QStringLiteral("LibraryContainer"),
+                        {}, {}, {}, {}, TutorialAction::TrackReload,
+                        QStringLiteral("[Channel1]"), QStringLiteral("track_loaded"),
+                        0.01, 0, true},
                 {QObject::tr("Start the song"),
                         QObject::tr("Press Play and listen for the steady count: one, two, three, four."),
                         QStringLiteral("PlayDeck"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel1]"), QStringLiteral("play"),
+                        0.01, 0, true, 1200},
                 {QObject::tr("Choose the loop length"),
                         QObject::tr("This number is the loop length in beats. Start with 4 beats—one complete bar in most dance music."),
                         {},
                         QStringLiteral("Deck1_Src"),
-                        QStringLiteral("beatloop_size")},
+                        QStringLiteral("beatloop_size"),
+                        {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("beatloop_size"),
+                        0.1, 0, true, 1200},
+                {QObject::tr("Wait for the phrase"),
+                        QObject::tr("Let the track play while you count one, two, three, four. The lesson is waiting for a clean musical point before it asks you to loop."),
+                        QStringLiteral("WaveformsContainer"),
+                        {}, {}, {}, {}, TutorialAction::PlaybackWait,
+                        QStringLiteral("[Channel1]"), QStringLiteral("play"),
+                        0.01, 4000, false, 300},
                 {QObject::tr("Turn the loop on"),
                         QObject::tr("Press this loop button near the start of a musical phrase. Mixxx repeats the selected number of beats without stopping the music."),
                         QStringLiteral("LoopActivate"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel1]"), QStringLiteral("beatloop_activate"),
+                        0.01, 0, false, 1200},
                 {QObject::tr("Make the loop shorter"),
                         QObject::tr("Reduce the beat count while the loop is active. A shorter loop repeats faster and builds tension. Do it gradually so the change sounds intentional."),
                         {},
                         QStringLiteral("Deck1_Src"),
-                        QStringLiteral("beatloop_size")},
+                        QStringLiteral("beatloop_size"),
+                        {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("beatloop_size"),
+                        0.1, 0, false, 1200},
                 {QObject::tr("Make the loop longer"),
                         QObject::tr("Increase the beat count again. Longer loops preserve more of the musical phrase and usually sound calmer."),
                         {},
                         QStringLiteral("Deck1_Src"),
-                        QStringLiteral("beatloop_size")},
+                        QStringLiteral("beatloop_size"),
+                        {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("beatloop_size"),
+                        0.1, 0, false, 1200},
                 {QObject::tr("Exit the loop"),
                         QObject::tr("Press the lit loop button again. Playback continues forward from the current position—your track does not restart."),
                         QStringLiteral("LoopActivate"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlChanged,
+                        QStringLiteral("[Channel1]"), QStringLiteral("loop_enabled"),
+                        0.01, 0, false},
                 {QObject::tr("Bring a loop back"),
                         QObject::tr("RELOOP returns to the most recent loop after you exit it. Use it when you need more time to prepare the next song."),
                         QStringLiteral("Reloop"),
-                        QStringLiteral("Deck1_Src")},
+                        QStringLiteral("Deck1_Src"),
+                        {}, {}, {}, TutorialAction::ControlPositive,
+                        QStringLiteral("[Channel1]"), QStringLiteral("reloop_toggle"),
+                        0.01, 0, false, 1500},
         };
     }
     return {};
@@ -258,6 +358,18 @@ class TutorialFocusOverlay final : public QWidget {
         m_detail = detail;
         m_step = step;
         m_stepCount = stepCount;
+        m_result = false;
+        setGeometry(parentWidget()->rect());
+        show();
+        raise();
+        update();
+    }
+
+    void setResult(const QString& title, const QString& detail) {
+        m_pTarget.clear();
+        m_title = title;
+        m_detail = detail;
+        m_result = true;
         setGeometry(parentWidget()->rect());
         show();
         raise();
@@ -278,24 +390,28 @@ class TutorialFocusOverlay final : public QWidget {
         painter.setRenderHint(QPainter::Antialiasing);
 
         QRect focusRect;
-        if (m_pTarget) {
+        if (!m_result && m_pTarget) {
             const QPoint topLeft = mapFromGlobal(m_pTarget->mapToGlobal(QPoint(0, 0)));
             focusRect = QRect(topLeft, m_pTarget->size())
                                 .adjusted(-9, -9, 9, 9)
                                 .intersected(rect().adjusted(6, 6, -6, -6));
         }
-        if (focusRect.isEmpty()) {
+        if (!m_result && focusRect.isEmpty()) {
             focusRect = QRect(width() / 2 - 50, height() / 2 - 30, 100, 60);
         }
 
-        QPainterPath shade;
-        shade.setFillRule(Qt::OddEvenFill);
-        shade.addRect(rect());
-        shade.addRoundedRect(focusRect, 10, 10);
-        painter.fillPath(shade, QColor(2, 4, 9, 188));
+        if (m_result) {
+            painter.fillRect(rect(), QColor(2, 4, 9, 210));
+        } else {
+            QPainterPath shade;
+            shade.setFillRule(Qt::OddEvenFill);
+            shade.addRect(rect());
+            shade.addRoundedRect(focusRect, 10, 10);
+            painter.fillPath(shade, QColor(2, 4, 9, 188));
 
-        painter.setPen(QPen(QColor(167, 139, 250), 3));
-        painter.drawRoundedRect(focusRect, 10, 10);
+            painter.setPen(QPen(QColor(167, 139, 250), 3));
+            painter.drawRoundedRect(focusRect, 10, 10);
+        }
 
         const int bubbleWidth = qMin(430, qMax(280, width() - 32));
         QFont titleFont = font();
@@ -312,8 +428,10 @@ class TutorialFocusOverlay final : public QWidget {
         const int bubbleHeight =
                 24 + titleMetrics.height() + 8 + detailBounds.height() + 20;
 
-        int bubbleX = focusRect.center().x() - bubbleWidth / 2;
-        int bubbleY = focusRect.bottom() + 20;
+        int bubbleX = m_result ? (width() - bubbleWidth) / 2
+                               : focusRect.center().x() - bubbleWidth / 2;
+        int bubbleY = m_result ? (height() - bubbleHeight) / 2
+                               : focusRect.bottom() + 20;
         if (bubbleY + bubbleHeight > height() - 16) {
             bubbleY = focusRect.top() - bubbleHeight - 20;
         }
@@ -330,19 +448,24 @@ class TutorialFocusOverlay final : public QWidget {
         const QRect bubbleRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
 
         painter.setPen(QPen(QColor(167, 139, 250), 2));
-        painter.drawLine(bubbleRect.center(), focusRect.center());
+        if (!m_result) {
+            painter.drawLine(bubbleRect.center(), focusRect.center());
+        }
         painter.setBrush(QColor(20, 16, 36, 248));
         painter.drawRoundedRect(bubbleRect, 14, 14);
 
         const QRect content = bubbleRect.adjusted(18, 14, -18, -14);
         painter.setFont(titleFont);
         painter.setPen(QColor(255, 255, 255));
+        const QString heading = m_result
+                ? m_title
+                : QStringLiteral("%1/%2  %3")
+                          .arg(m_step + 1)
+                          .arg(m_stepCount)
+                          .arg(m_title);
         painter.drawText(content.left(),
                 content.top() + titleMetrics.ascent(),
-                QStringLiteral("%1/%2  %3")
-                        .arg(m_step + 1)
-                        .arg(m_stepCount)
-                        .arg(m_title));
+                heading);
         painter.setFont(detailFont);
         painter.setPen(QColor(224, 219, 243));
         painter.drawText(QRect(content.left(),
@@ -359,6 +482,7 @@ class TutorialFocusOverlay final : public QWidget {
     QString m_detail;
     int m_step{0};
     int m_stepCount{0};
+    bool m_result{false};
 };
 
 MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServices)
@@ -439,25 +563,15 @@ MixxxMainWindow::MixxxMainWindow(std::shared_ptr<mixxx::CoreServices> pCoreServi
     m_pTutorialGuideLabel->setObjectName(QStringLiteral("levelZeroGuideLabel"));
     m_pTutorialGuideLabel->setWordWrap(false);
     m_pTutorialGuideLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    m_pTutorialGuidePrevious =
-            make_parented<QPushButton>(tr("Previous"), m_pTutorialToolBar);
-    m_pTutorialGuideNext =
-            make_parented<QPushButton>(tr("Next"), m_pTutorialToolBar);
     m_pTutorialToolBar->addSeparator();
     m_pTutorialToolBar->addWidget(m_pTutorialGuideLabel);
-    m_pTutorialToolBar->addWidget(m_pTutorialGuidePrevious);
-    m_pTutorialToolBar->addWidget(m_pTutorialGuideNext);
     m_pTutorialGuideLabel->hide();
-    m_pTutorialGuidePrevious->hide();
-    m_pTutorialGuideNext->hide();
-    connect(m_pTutorialGuidePrevious.get(), &QPushButton::clicked, this, [this] {
-        showTutorialGuideStep(m_tutorialGuideStep - 1);
-    });
-    connect(m_pTutorialGuideNext.get(), &QPushButton::clicked, this, [this] {
-        const int stepCount = tutorialGuideSteps(m_activeTutorialId).size();
-        showTutorialGuideStep(
-                m_tutorialGuideStep == stepCount - 1 ? 0 : m_tutorialGuideStep + 1);
-    });
+    m_pTutorialStepTimer = make_parented<QTimer>(this);
+    m_pTutorialStepTimer->setInterval(100);
+    connect(m_pTutorialStepTimer,
+            &QTimer::timeout,
+            this,
+            &MixxxMainWindow::updateTutorialStepTimer);
     addToolBar(Qt::TopToolBarArea, m_pTutorialToolBar);
     m_pTutorialToolBar->hide();
 
@@ -925,18 +1039,18 @@ void MixxxMainWindow::showTutorialHome() {
         return;
     }
 
+    resetTutorialSession();
     if (m_pTutorialVisibility) {
         m_pTutorialVisibilityPanel->setController(nullptr);
         m_pTutorialVisibility->restore();
         m_pTutorialVisibility.reset();
     }
     m_activeTutorialId.clear();
+    m_activeTutorialMode.clear();
     if (m_pTutorialFocusOverlay) {
         m_pTutorialFocusOverlay->hide();
     }
     m_pTutorialGuideLabel->hide();
-    m_pTutorialGuidePrevious->hide();
-    m_pTutorialGuideNext->hide();
     m_pTutorialVisibilityPanel->hide();
     m_pTutorialToolBar->hide();
     m_pMenuBar->setEnabled(true);
@@ -965,7 +1079,8 @@ void MixxxMainWindow::showTutorialHome() {
     m_pTutorialHomePage->show();
 }
 
-void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
+void MixxxMainWindow::showDjWorkspace(
+        const QString& tutorialId, const QString& tutorialMode) {
     if (!m_pCentralWidget || !m_pTutorialHomePage) {
         return;
     }
@@ -977,6 +1092,8 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     m_pCentralWidget->show();
 
     m_activeTutorialId = tutorialId;
+    m_activeTutorialMode = tutorialMode;
+    m_tutorialStepStars.clear();
     m_pTutorialVisibility =
             std::make_unique<mixxx::tutorial::VisibilityController>(m_pCentralWidget);
     const QString profilePath = QDir(m_pCoreServices->getSettings()->getResourcePath())
@@ -1008,13 +1125,13 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     }
     m_pTutorialToolBar->show();
     m_pTutorialGuideLabel->setVisible(hasGuide);
-    m_pTutorialGuidePrevious->setVisible(hasGuide);
-    m_pTutorialGuideNext->setVisible(hasGuide);
     if (hasGuide) {
         if (!m_pTutorialFocusOverlay ||
                 m_pTutorialFocusOverlay->parentWidget() != m_pCentralWidget) {
             m_pTutorialFocusOverlay = new TutorialFocusOverlay(m_pCentralWidget);
         }
+        m_pTutorialFocusOverlay->setVisible(
+                m_activeTutorialMode != QStringLiteral("eval"));
         loadTutorialDemoTracks(tutorialId);
         QTimer::singleShot(600, this, [this] {
             showTutorialGuideStep(0);
@@ -1137,22 +1254,271 @@ void MixxxMainWindow::showTutorialGuideStep(int step) {
             guideStep.widgetType);
 
     m_pTutorialGuideLabel->setText(
-            tr("%1 of %2  ·  %3")
-                    .arg(m_tutorialGuideStep + 1)
-                    .arg(steps.size())
-                    .arg(guideStep.title));
-    m_pTutorialGuidePrevious->setEnabled(m_tutorialGuideStep > 0);
-    m_pTutorialGuideNext->setText(
-            m_tutorialGuideStep == steps.size() - 1
-                    ? tr("Restart")
-                    : tr("Next"));
-
-    if (m_pTutorialFocusOverlay) {
+            m_activeTutorialMode == QStringLiteral("eval")
+                    ? tr("EVAL  ·  Task %1 of %2: %3")
+                              .arg(m_tutorialGuideStep + 1)
+                              .arg(steps.size())
+                              .arg(guideStep.title)
+                    : tr("LEARN  ·  %1 of %2  ·  %3  ·  Do the highlighted action")
+                              .arg(m_tutorialGuideStep + 1)
+                              .arg(steps.size())
+                              .arg(guideStep.title));
+    if (m_pTutorialFocusOverlay &&
+            m_activeTutorialMode != QStringLiteral("eval")) {
         m_pTutorialFocusOverlay->setTarget(pTarget,
                 guideStep.title,
                 guideStep.detail,
                 m_tutorialGuideStep,
                 steps.size());
+    } else if (m_pTutorialFocusOverlay) {
+        m_pTutorialFocusOverlay->hide();
+    }
+    armTutorialStep();
+}
+
+void MixxxMainWindow::armTutorialStep() {
+    m_pTutorialStepTimer->stop();
+    m_pTutorialActionControl.reset();
+    m_tutorialStepElapsedMs = 0;
+    m_tutorialPlaybackWaitMs = 0;
+    m_tutorialStepCompleted = false;
+    m_tutorialSawInactiveControl = false;
+
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
+    if (m_tutorialGuideStep < 0 || m_tutorialGuideStep >= steps.size()) {
+        return;
+    }
+    const TutorialGuideStep& guideStep = steps.at(m_tutorialGuideStep);
+    if (guideStep.pauseOnEnter) {
+        pauseTutorialDecks();
+    }
+
+    QString actionGroup = guideStep.actionGroup;
+    QString actionItem = guideStep.actionItem;
+    if (actionGroup.isEmpty() || actionItem.isEmpty()) {
+        QWidget* pTarget = findTutorialGuideTarget(guideStep.objectName,
+                guideStep.within,
+                guideStep.tooltipId,
+                guideStep.controlKey,
+                guideStep.widgetType);
+        const QStringList controlKeys =
+                pTarget ? pTarget->property("mixxxControlKeys").toStringList()
+                        : QStringList{};
+        for (const QString& controlKey : controlKeys) {
+            const int separator = controlKey.lastIndexOf(QStringLiteral("],"));
+            if (separator > 0 && separator + 2 < controlKey.size()) {
+                actionGroup = controlKey.left(separator + 1);
+                actionItem = controlKey.mid(separator + 2);
+                break;
+            }
+        }
+    }
+
+    if (!actionGroup.isEmpty() && !actionItem.isEmpty()) {
+        m_pTutorialActionControl =
+                std::make_unique<ControlProxy>(actionGroup, actionItem);
+        if (m_pTutorialActionControl->valid()) {
+            m_tutorialControlBaseline = m_pTutorialActionControl->get();
+            m_tutorialSawInactiveControl = m_tutorialControlBaseline <= 0.0;
+            m_pTutorialActionControl->connectValueChanged(
+                    this, [this](double value) {
+                        handleTutorialControlValue(value);
+                    });
+        } else {
+            m_pTutorialActionControl.reset();
+        }
+    }
+    m_pTutorialStepTimer->start();
+}
+
+void MixxxMainWindow::handleTutorialControlValue(double value) {
+    if (m_tutorialStepCompleted) {
+        return;
+    }
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
+    if (m_tutorialGuideStep < 0 || m_tutorialGuideStep >= steps.size()) {
+        return;
+    }
+    const TutorialGuideStep& guideStep = steps.at(m_tutorialGuideStep);
+    switch (guideStep.action) {
+    case TutorialAction::ControlChanged:
+        if (qAbs(value - m_tutorialControlBaseline) >=
+                guideStep.changeThreshold) {
+            completeTutorialStep();
+        }
+        break;
+    case TutorialAction::ControlPositive:
+        if (value > 0.0) {
+            completeTutorialStep();
+        }
+        break;
+    case TutorialAction::TrackReload:
+        if (value <= 0.0) {
+            m_tutorialSawInactiveControl = true;
+        } else if (m_tutorialSawInactiveControl) {
+            completeTutorialStep();
+        }
+        break;
+    case TutorialAction::Timed:
+    case TutorialAction::PlaybackWait:
+        break;
+    }
+}
+
+void MixxxMainWindow::updateTutorialStepTimer() {
+    if (m_tutorialStepCompleted) {
+        return;
+    }
+    m_tutorialStepElapsedMs += m_pTutorialStepTimer->interval();
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
+    if (m_tutorialGuideStep < 0 || m_tutorialGuideStep >= steps.size()) {
+        return;
+    }
+    const TutorialGuideStep& guideStep = steps.at(m_tutorialGuideStep);
+    if (guideStep.action == TutorialAction::Timed &&
+            m_tutorialStepElapsedMs >= guideStep.waitMs) {
+        completeTutorialStep();
+        return;
+    }
+    if (guideStep.action != TutorialAction::PlaybackWait) {
+        return;
+    }
+
+    if (m_pTutorialActionControl && m_pTutorialActionControl->toBool()) {
+        m_tutorialPlaybackWaitMs += m_pTutorialStepTimer->interval();
+    }
+    const int secondsRemaining = qMax(
+            0, (guideStep.waitMs - m_tutorialPlaybackWaitMs + 999) / 1000);
+    m_pTutorialGuideLabel->setText(
+            m_activeTutorialMode == QStringLiteral("eval")
+                    ? tr("EVAL  ·  Task %1 of %2  ·  Listening… %3s")
+                              .arg(m_tutorialGuideStep + 1)
+                              .arg(steps.size())
+                              .arg(secondsRemaining)
+                    : tr("LEARN  ·  Listening for the right point… %1s")
+                              .arg(secondsRemaining));
+    if (m_tutorialPlaybackWaitMs >= guideStep.waitMs) {
+        completeTutorialStep();
+    }
+}
+
+void MixxxMainWindow::completeTutorialStep() {
+    if (m_tutorialStepCompleted) {
+        return;
+    }
+    m_tutorialStepCompleted = true;
+    m_pTutorialStepTimer->stop();
+
+    const QList<TutorialGuideStep> steps = tutorialGuideSteps(m_activeTutorialId);
+    if (m_tutorialGuideStep < 0 || m_tutorialGuideStep >= steps.size()) {
+        return;
+    }
+    const TutorialGuideStep& guideStep = steps.at(m_tutorialGuideStep);
+    if (m_activeTutorialMode == QStringLiteral("eval") &&
+            guideStep.action != TutorialAction::Timed &&
+            guideStep.action != TutorialAction::PlaybackWait) {
+        m_tutorialStepStars.append(m_tutorialStepElapsedMs <= 6000
+                        ? 3
+                        : (m_tutorialStepElapsedMs <= 12000 ? 2 : 1));
+    }
+
+    if (guideStep.pauseOnEnter && guideStep.listenAfterMs >= 1000) {
+        ControlObject::set(ConfigKey(QStringLiteral("[Channel1]"),
+                                   QStringLiteral("play")),
+                1.0);
+    }
+    m_pTutorialGuideLabel->setText(
+            m_activeTutorialMode == QStringLiteral("eval")
+                    ? tr("EVAL  ·  ✓ Task completed")
+                    : tr("LEARN  ·  ✓ Nice — listen to what changed"));
+    if (m_pTutorialFocusOverlay &&
+            m_activeTutorialMode != QStringLiteral("eval")) {
+        QWidget* pTarget = findTutorialGuideTarget(guideStep.objectName,
+                guideStep.within,
+                guideStep.tooltipId,
+                guideStep.controlKey,
+                guideStep.widgetType);
+        m_pTutorialFocusOverlay->setTarget(pTarget,
+                tr("✓ %1").arg(guideStep.title),
+                guideStep.listenAfterMs >= 1000
+                        ? tr("Correct. The music is playing briefly so you can hear the result. The next step starts automatically.")
+                        : tr("Correct. Moving to the next step automatically."),
+                m_tutorialGuideStep,
+                steps.size());
+    }
+
+    const QString tutorialId = m_activeTutorialId;
+    const int completedStep = m_tutorialGuideStep;
+    QTimer::singleShot(guideStep.listenAfterMs, this, [this, tutorialId, completedStep] {
+        if (m_activeTutorialId != tutorialId ||
+                m_tutorialGuideStep != completedStep) {
+            return;
+        }
+        const int stepCount = tutorialGuideSteps(m_activeTutorialId).size();
+        if (completedStep + 1 >= stepCount) {
+            finishTutorialSession();
+        } else {
+            showTutorialGuideStep(completedStep + 1);
+        }
+    });
+}
+
+void MixxxMainWindow::finishTutorialSession() {
+    m_pTutorialStepTimer->stop();
+    m_pTutorialActionControl.reset();
+    pauseTutorialDecks();
+
+    QString title;
+    QString detail;
+    if (m_activeTutorialMode == QStringLiteral("eval")) {
+        int stars = 3;
+        if (!m_tutorialStepStars.isEmpty()) {
+            int total = 0;
+            for (int score : std::as_const(m_tutorialStepStars)) {
+                total += score;
+            }
+            stars = qBound(1,
+                    qRound(static_cast<double>(total) /
+                            m_tutorialStepStars.size()),
+                    3);
+        }
+        const QString starText = QString(stars, QChar(0x2605)) +
+                QString(3 - stars, QChar(0x2606));
+        title = tr("Evaluation complete  %1").arg(starText);
+        detail = stars == 3
+                ? tr("Excellent: every task was completed confidently. Return to the menu or run the evaluation again.")
+                : tr("Good run. Your score improves when you complete each task accurately and without long pauses. Try again for three stars.");
+    } else {
+        title = tr("Lesson complete  ✓");
+        detail = tr("You completed every action yourself. Return to the menu when you are ready for another lesson or its evaluation.");
+    }
+    m_pTutorialGuideLabel->setText(title);
+    if (m_pTutorialFocusOverlay) {
+        m_pTutorialFocusOverlay->setResult(title, detail);
+    }
+}
+
+void MixxxMainWindow::resetTutorialSession() {
+    if (m_pTutorialStepTimer) {
+        m_pTutorialStepTimer->stop();
+    }
+    m_pTutorialActionControl.reset();
+    m_tutorialStepCompleted = false;
+    m_tutorialStepStars.clear();
+    if (!m_activeTutorialId.isEmpty()) {
+        pauseTutorialDecks();
+    }
+}
+
+void MixxxMainWindow::pauseTutorialDecks() {
+    const auto pPlayerManager = m_pCoreServices->getPlayerManager();
+    if (!pPlayerManager) {
+        return;
+    }
+    for (int deck = 0; deck < pPlayerManager->numberOfDecks(); ++deck) {
+        ControlObject::set(ConfigKey(PlayerManager::groupForDeck(deck),
+                                   QStringLiteral("play")),
+                0.0);
     }
 }
 
