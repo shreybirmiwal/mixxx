@@ -21,6 +21,7 @@
 #include <QStyle>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolTip>
 #include <QUrl>
 #include <QtMath>
 
@@ -1288,6 +1289,10 @@ void MixxxMainWindow::showTutorialHome() {
         m_pTutorialVisibility.reset();
     }
     m_activeTutorialId.clear();
+#ifdef MIXXX_USE_QOPENGL
+    ToolTipQOpenGL::singleton().setActive(
+            m_toolTipsCfg == mixxx::preferences::Tooltips::On);
+#endif
     if (m_pTutorialFocusOverlay) {
         m_pTutorialFocusOverlay->hide();
     }
@@ -1333,6 +1338,12 @@ void MixxxMainWindow::showDjWorkspace(const QString& tutorialId) {
     m_pCentralWidget->show();
 
     m_activeTutorialId = tutorialId;
+    if (!m_activeTutorialId.isEmpty()) {
+        QToolTip::hideText();
+#ifdef MIXXX_USE_QOPENGL
+        ToolTipQOpenGL::singleton().setActive(false);
+#endif
+    }
     m_pTutorialVisibility =
             std::make_unique<mixxx::tutorial::VisibilityController>(m_pCentralWidget);
     const QString profilePath = QDir(m_pCoreServices->getSettings()->getResourcePath())
@@ -2592,6 +2603,7 @@ void MixxxMainWindow::slotTooltipModeChanged(mixxx::preferences::Tooltips tt) {
             tt == mixxx::preferences::Tooltips::OnlyKbdShortcuts);
 #ifdef MIXXX_USE_QOPENGL
     ToolTipQOpenGL::singleton().setActive(
+            m_activeTutorialId.isEmpty() &&
             m_toolTipsCfg == mixxx::preferences::Tooltips::On);
 #endif
 }
@@ -2717,6 +2729,11 @@ void MixxxMainWindow::tryParseAndSetDefaultStyleSheet() {
 /// Catch ToolTip and WindowStateChange events
 bool MixxxMainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (event->type() == QEvent::ToolTip) {
+        // Guided lessons provide their own contextual coaching. Suppress the
+        // skin's legacy hover text during the lesson and its focused free play.
+        if (!m_activeTutorialId.isEmpty()) {
+            return true;
+        }
         // Always show tooltips if Ctrl is held down
         if (QApplication::keyboardModifiers().testFlag(Qt::ControlModifier)) {
             return QMainWindow::eventFilter(obj, event);
