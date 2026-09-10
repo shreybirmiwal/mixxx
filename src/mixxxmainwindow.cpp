@@ -159,19 +159,19 @@ struct TutorialGuideStep {
 QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
     if (tutorialId == QStringLiteral("level-zero")) {
         return {
-                {QObject::tr("Pick two songs"),
-                        QObject::tr("This is your music library. Pick any song and drag it onto the left deck. Then drag a different song onto the right deck."),
+                {QObject::tr("This is your song library"),
+                        QObject::tr("Every song Mixxx knows appears here. In the next steps, you will choose one song for each deck."),
                         QStringLiteral("LibraryContainer"),
                         {}, {}, {}, {}, TutorialAction::Timed, {}, {}, 0.01, 1800},
-                {QObject::tr("Load the left deck"),
-                        QObject::tr("Drag a song from the library and drop it directly into this glowing title box. The example song will be replaced and its waveform will appear above."),
+                {QObject::tr("Choose song 1 for the left deck"),
+                        QObject::tr("Pick one song from the library, then drag and drop it directly into this glowing left title box. Its title, artwork, and waveform will appear here."),
                         QStringLiteral("TitleText"),
                         QStringLiteral("Deck1_Src"),
                         {}, {}, {}, TutorialAction::TrackReload,
                         QStringLiteral("[Channel1]"), QStringLiteral("track_samples"),
                         1.0, 0, true},
-                {QObject::tr("Load the right deck"),
-                        QObject::tr("Now drag a different song into this right title box. A DJ uses two decks so the next song can be prepared while the first one plays."),
+                {QObject::tr("Choose song 2 for the right deck"),
+                        QObject::tr("Pick a different song, then drag and drop it into this glowing right title box. This lets you prepare the next song while the first one plays."),
                         QStringLiteral("TitleText"),
                         QStringLiteral("Deck2_Src"),
                         {}, {}, {}, TutorialAction::TrackReload,
@@ -182,7 +182,7 @@ QList<TutorialGuideStep> tutorialGuideSteps(const QString& tutorialId) {
                         QStringLiteral("WaveformsContainer"),
                         {}, {}, {}, {}, TutorialAction::Timed, {}, {}, 0.01, 2400},
                 {QObject::tr("Play and pause"),
-                        QObject::tr("Press this button to start the left song. The lesson detects it and unlocks Next step so you stay in control."),
+                        QObject::tr("Press this button to start the left song. The lesson detects the action, lets you hear the result, and then continues."),
                         QStringLiteral("PlayDeck"),
                         QStringLiteral("Deck1_Src"),
                         {}, {}, {}, TutorialAction::ControlPositive,
@@ -1677,8 +1677,8 @@ void MixxxMainWindow::completeTutorialStep() {
     }
     m_pTutorialGuideLabel->setText(
             tr("LEARN  ·  ✓ Done — %1")
-                    .arg(isLastStep ? tr("finish the lesson when ready")
-                                    : tr("continue when ready")));
+                    .arg(isLastStep ? tr("finishing lesson…")
+                                    : tr("next step starting…")));
     m_pTutorialCheckNext->setText(
             isLastStep ? tr("Finish lesson  →") : tr("Next step  →"));
     m_pTutorialCheckNext->setAccessibleName(
@@ -1695,11 +1695,30 @@ void MixxxMainWindow::completeTutorialStep() {
         m_pTutorialFocusOverlay->setTarget(pTarget,
                 tr("✓ %1").arg(guideStep.title),
                 guideStep.listenAfterMs >= 1000
-                        ? tr("Correct. Listen to the result, then press Next step when you are ready.")
-                        : tr("Correct. Press Next step when you are ready."),
+                        ? tr("Correct. Listen to the result—the next step will begin automatically.")
+                        : tr("Correct. Moving to the next step automatically…"),
                 m_tutorialGuideStep,
                 steps.size());
     }
+
+    const QString tutorialId = m_activeTutorialId;
+    const int completedStep = m_tutorialGuideStep;
+    QTimer::singleShot(qMax(500, guideStep.listenAfterMs),
+            this,
+            [this, tutorialId, completedStep] {
+                if (m_activeTutorialId != tutorialId ||
+                        m_tutorialGuideStep != completedStep ||
+                        !m_tutorialStepCompleted) {
+                    return;
+                }
+                const int stepCount =
+                        tutorialGuideSteps(m_activeTutorialId).size();
+                if (completedStep + 1 >= stepCount) {
+                    finishTutorialSession();
+                } else {
+                    showTutorialGuideStep(completedStep + 1);
+                }
+            });
 }
 
 void MixxxMainWindow::finishTutorialSession() {

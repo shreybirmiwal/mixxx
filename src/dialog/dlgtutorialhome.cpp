@@ -202,7 +202,7 @@ TutorialHomePage::TutorialHomePage(QWidget* parent)
     pRootLayout->addWidget(pTitle);
 
     auto pSubtitle = make_parented<QLabel>(
-            tr("A step-by-step DJ course. Each lesson watches what you do, checks the skill, and unlocks your next step."), this);
+            tr("A step-by-step DJ course. Each lesson watches what you do, checks the skill, and automatically moves forward when you get it right."), this);
     pSubtitle->setObjectName(QStringLiteral("subtitle"));
     pSubtitle->setWordWrap(true);
     pRootLayout->addWidget(pSubtitle);
